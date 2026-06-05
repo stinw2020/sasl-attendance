@@ -523,47 +523,65 @@
       });
     } 
 
-    // --- DIRECT LIVE QR SCANNER (PAYTM STYLE) ---
+    // --- DIRECT LIVE QR SCANNER (iOS FIX) ---
     function startScanner() {
       let msgBox = document.getElementById("attMsg");
-      msgBox.innerHTML = "<span style='color:#0f131c;'>Checking Location... Please wait.</span>";
+      msgBox.innerHTML = "<span style='color:#0f131c;'>Starting Camera...</span>";
+      
+      // iOS Rule: Button dabate hi sidha camera kholo (Bina GPS ka wait kiye)
+      document.getElementById("reader").style.display = "block";
+      document.getElementById("scanBtn").style.display = "none"; 
+      
+      if(!html5QrCode) {
+          html5QrCode = new Html5Qrcode("reader");
+      }
+      
+      html5QrCode.start(
+          { facingMode: "environment" }, 
+          { fps: 10, qrbox: { width: 250, height: 250 } }, 
+          (decodedText) => {
+              // Jaise hi QR scan ho, camera band karo aur Agla step (GPS) shuru karo
+              html5QrCode.stop().then(() => {
+                  document.getElementById("reader").style.display = "none";
+                  document.getElementById("scanBtn").style.display = "block"; 
+                  verifyLocationAndMark(decodedText); 
+              }).catch(err => console.log(err));
+          },
+          (errorMessage) => { } 
+      ).catch(err => {
+          msgBox.innerHTML = "<span style='color:#c0392b;'>Camera Permission Denied! Kripya browser me camera allow karein.</span>";
+          resetScannerUI();
+      });
+    }
+
+    // --- NAYA STEP: QR scan hone ke BAAD GPS check karna ---
+    function verifyLocationAndMark(decodedText) {
+      if (decodedText.trim() !== currentSecretQR) {
+         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; 
+         return; 
+      }
+
+      let msgBox = document.getElementById("attMsg");
+      msgBox.innerHTML = "<span style='color:#0f131c;'>QR Scanned! Verifying GPS Location...</span>";
       
       if(!navigator.geolocation) { 
         msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; 
         return; 
       }
       
+      // Ab aaram se location mangenge
       navigator.geolocation.getCurrentPosition(pos => {
         let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
         
         if(dist <= ALLOWED_RADIUS) {
-            msgBox.innerHTML = "<span style='color:#27ae60;'>Location Verified! Starting Scanner...</span>";
+            msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
             
-            document.getElementById("reader").style.display = "block";
-            document.getElementById("scanBtn").style.display = "none"; 
-            
-            if(!html5QrCode) {
-                html5QrCode = new Html5Qrcode("reader");
-            }
-            
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: { width: 250, height: 250 } }, 
-                (decodedText) => {
-                    // QR dekhte hi scan success!
-                    html5QrCode.stop().then(() => {
-                        document.getElementById("reader").style.display = "none";
-                        document.getElementById("scanBtn").style.display = "block"; 
-                        onScanSuccess(decodedText); 
-                    }).catch(err => console.log(err));
-                },
-                (errorMessage) => { } // ignore regular scanning errors
-            ).catch(err => {
-                msgBox.innerHTML = "<span style='color:#c0392b;'>Camera Permission Denied! Kripya browser me camera allow karein.</span>";
-                document.getElementById("reader").style.display = "none";
-                document.getElementById("scanBtn").style.display = "block";
+            // Backend par entry bhejna
+            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
+              if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + "</span>";
+              else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>" + res.message + "</span>";
             });
-
+            
         } else {
             msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Range: 15m)</span>";
         }
