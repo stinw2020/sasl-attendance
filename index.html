@@ -730,22 +730,40 @@
     function refreshStudentData() {
       let btn = document.getElementById("stuRefreshBtn");
       btn.innerText = "↻ Refreshing...";
-      callBackend("getDashboardExtras", {}, dash => {
-          try {
-            let nHtml = ""; 
-            if(dash.notices && dash.notices.length > 0) {
-              dash.notices.forEach(n => { 
-                let safeText = n.text ? n.text.toString().replace(/\n/g, '<br>') : "";
-                if(safeText) nHtml += "<div style='margin-bottom:12px; border-bottom:1px dashed #ccc; padding-bottom:8px;'><b>["+n.date+"]</b><br>"+safeText+"</div>"; 
-              });
-            }
-            document.getElementById("noticeList").innerHTML = nHtml || "No active notices.";
-            libLat = dash.lat || 0; libLng = dash.lng || 0; currentSecretQR = dash.qrCode || ""; 
-            btn.innerText = "↻ Refresh";
-          } catch(e) { btn.innerText = "↻ Refresh"; }
+      
+      // Memory se student ka ID aur Mobile nikalna
+      let savedId = localStorage.getItem("libStuId");
+      let savedMob = localStorage.getItem("libStuMob");
+      
+      if(!savedId || !savedMob) {
+          btn.innerText = "↻ Refresh";
+          return;
+      }
+
+      // Server se poora fresh data mangwana
+      callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
+          if(res.success) {
+              if(!res.active) { 
+                  show('inactiveScreen'); // Agar kisi ne block kar diya ho
+              } else {
+                  // 1. Naya data memory (offline cache) me save karna
+                  localStorage.setItem("libStuData", JSON.stringify(res));
+                  
+                  // 2. Poora Dashboard (Name, Due Date, Status aur Notices) update karna
+                  setupStudentDashboard(res);
+                  
+                  // Button ko wapas normal karna
+                  setTimeout(() => { btn.innerText = "↻ Refresh"; }, 500);
+              }
+          } else {
+              // Agar ID/Mobile server par match na ho toh logout kar do
+              logout();
+          }
+      }, err => {
+          console.error("Refresh Error: ", err);
+          btn.innerText = "↻ Refresh";
       });
     }
-
     function refreshAdminData() {
       let btn = document.getElementById("adminRefreshBtn");
       btn.innerText = "↻ Refreshing...";
