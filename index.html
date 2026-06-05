@@ -175,23 +175,25 @@
     <h2 style="text-align:center; color:#0f131c; margin-top:0;">SASL Attendance Portal</h2>
     <p style="text-align:center; color:#7f8c8d; font-size:14px; margin-top:-10px;">Login to your account</p>
     
-    <label style="font-size:14px; font-weight:bold; color:#34495e;">Select Role</label>
+    <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Select Role</label>
     <select id="roleSelect" onchange="toggleLoginFields()">
       <option value="Student">Student</option>
       <option value="Admin">Admin</option>
     </select>
     
     <div id="studentLoginFields">
-      <label style="font-size:14px; font-weight:bold; color:#34495e;">Username</label>
+      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Username</label>
       <input type="text" id="loginUser" placeholder="Enter Username">
-      <label style="font-size:14px; font-weight:bold; color:#34495e;">Password</label>
+      
+      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Password</label>
       <input type="password" id="loginPass" placeholder="Enter Password">
     </div>
     
     <div id="adminLoginFields" class="hidden">
-      <label style="font-size:14px; font-weight:bold; color:#34495e;">Admin Username</label>
+      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Admin Username</label>
       <input type="text" id="adminUser" placeholder="Admin Username">
-      <label style="font-size:14px; font-weight:bold; color:#34495e;">Admin Password</label>
+      
+      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Admin Password</label>
       <input type="password" id="adminPass" placeholder="Admin Password">
     </div>
 
