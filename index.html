@@ -356,7 +356,52 @@
         if(onFailure) onFailure(err);
       });
     }
+// --- ADMIN PIN LOGIC ---
+      function showPinScreen() {
+          document.getElementById("dashboardDiv").style.display = "none";
+          document.getElementById("loginWrapper").style.display = "none";
+          document.getElementById("pinScreen").style.display = "flex";
+          document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
+          document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
+          document.getElementById("pinErrMsg").innerText = "";
+          document.getElementById("pin1").focus();
+      }
 
+      function movePinFocus(curr, nextID) {
+          if(curr.value.length === 1) {
+              if(nextID === 'verify') processAdminPin();
+              else document.getElementById(nextID).focus();
+          }
+      }
+
+      function processAdminPin() {
+          let ent = document.getElementById("pin1").value + document.getElementById("pin2").value + document.getElementById("pin3").value + document.getElementById("pin4").value;
+          let savedPin = localStorage.getItem("adminPin");
+          
+          document.getElementById("pinActionBtn").innerText = "Verifying...";
+          setTimeout(() => {
+              document.getElementById("pinActionBtn").innerText = "Unlock";
+              if(ent === savedPin) {
+                  document.getElementById("pinScreen").style.display = "none";
+                  document.getElementById("dashboardDiv").style.display = "block"; // Dashboard show karega
+              } else {
+                  document.getElementById("pinErrMsg").innerText = "Incorrect PIN!";
+                  document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
+                  document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
+                  document.getElementById("pin1").focus();
+              }
+          }, 400);
+      }
+
+      // --- APP SENSOR (Home Button dabane par lock hona) ---
+      document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") {
+              // Sirf tab lock lagega jab user Admin ho aur pehle se logged in ho
+              if (localStorage.getItem("isLoggedIn") === "true" && localStorage.getItem("userRole") === "Admin") {
+                  showPinScreen();
+              }
+          }
+      });
     // --- SAFE AUTO-LOGIN LOGIC ---
     window.onload = function() {
       try {
@@ -437,13 +482,37 @@
       callBackend("verifyUserLogin", {r: r, u: u, p: p}, res => {
         if(res.success) {
           msg.innerText = "";
+          
+          // Dono ke liye login status save karein taaki minimize sensor kaam kare
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("libRole", r); 
+          
           if(r === "Admin") {
-            localStorage.setItem("libRole", "Admin"); 
-            show('adminDashboard'); 
+            // ==========================================
+            // NAYA: ADMIN PIN LOGIC
+            // ==========================================
+            let existingPin = localStorage.getItem("adminPin");
+            if (!existingPin) {
+                let newPin = prompt("Admin Security: Set a 4-Digit PIN for App Lock:");
+                if (newPin && newPin.length === 4 && !isNaN(newPin)) { 
+                    localStorage.setItem("adminPin", newPin); 
+                } else { 
+                    localStorage.setItem("adminPin", "0000"); // Agar admin khali chhod de
+                }
+            }
+            
+            // Admin ka data piche ready kar do, par pehle PIN screen dikhao
             document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
             document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
             fetchDailyAttendance();
+            
+            // Dashboard ki jagah PIN screen open hogi
+            showPinScreen(); 
+
           } else {
+            // ==========================================
+            // STUDENT LOGIC (Bina PIN ke seedha andar)
+            // ==========================================
             askForLocationPermission();
           }
         } else {
