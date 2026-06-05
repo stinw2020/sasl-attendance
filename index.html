@@ -328,13 +328,14 @@
     let libLat = 0, libLng = 0;
     let currentSecretQR = "";
     let globalCalData = [];
+    let html5QrCode = null; // Live scanner object
 
     // --- NAYA API CALL FUNCTION ---
     function callBackend(action, data, onSuccess, onFailure) {
       fetch(API_URL, {
         redirect: "follow",
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, // Safari ke CORS bypass ke liye
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, 
         body: JSON.stringify({ action: action, data: data })
       })
       .then(response => response.json())
@@ -522,77 +523,61 @@
       });
     } 
 
-    let camInput = document.createElement("input");
-    camInput.type = "file";
-    camInput.accept = "image/jpeg, image/png"; 
-    camInput.capture = "environment"; 
-    camInput.id = "nativeCameraInput";
-    camInput.style.display = "none";
-    document.body.appendChild(camInput);
-
+    // --- DIRECT LIVE QR SCANNER (PAYTM STYLE) ---
     function startScanner() {
-      document.getElementById("attMsg").innerHTML = "<span style='color:#0f131c;'>Opening Camera...</span>";
-      camInput.click(); 
-    }
-
-    camInput.addEventListener("change", function(e) {
       let msgBox = document.getElementById("attMsg");
-      if(e.target.files.length == 0) {
-          msgBox.innerHTML = "<span style='color:#c0392b;'>Scan cancelled.</span>"; return;
+      msgBox.innerHTML = "<span style='color:#0f131c;'>Checking Location... Please wait.</span>";
+      
+      if(!navigator.geolocation) { 
+        msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; 
+        return; 
       }
-      let originalFile = e.target.files[0];
-      msgBox.innerHTML = "<span style='color:#0f131c;'>Optimizing Photo... Please wait.</span>";
+      
+      navigator.geolocation.getCurrentPosition(pos => {
+        let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
+        
+        if(dist <= ALLOWED_RADIUS) {
+            msgBox.innerHTML = "<span style='color:#27ae60;'>Location Verified! Starting Scanner...</span>";
+            
+            document.getElementById("reader").style.display = "block";
+            document.getElementById("scanBtn").style.display = "none"; 
+            
+            if(!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+            
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: { width: 250, height: 250 } }, 
+                (decodedText) => {
+                    // QR dekhte hi scan success!
+                    html5QrCode.stop().then(() => {
+                        document.getElementById("reader").style.display = "none";
+                        document.getElementById("scanBtn").style.display = "block"; 
+                        onScanSuccess(decodedText); 
+                    }).catch(err => console.log(err));
+                },
+                (errorMessage) => { } // ignore regular scanning errors
+            ).catch(err => {
+                msgBox.innerHTML = "<span style='color:#c0392b;'>Camera Permission Denied! Kripya browser me camera allow karein.</span>";
+                document.getElementById("reader").style.display = "none";
+                document.getElementById("scanBtn").style.display = "block";
+            });
 
-      let reader = new FileReader();
-      reader.onload = function(event) {
-          let img = new Image();
-          img.onload = function() {
-              let canvas = document.createElement("canvas");
-              let max_size = 500; 
-              let width = img.width; let height = img.height;
-              
-              if (width > height && width > max_size) { height *= max_size / width; width = max_size; } 
-              else if (height > max_size) { width *= max_size / height; height = max_size; }
-              
-              canvas.width = width; canvas.height = height;
-              canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-              
-              canvas.toBlob(function(blob) {
-                  let optimizedFile = new File([blob], "qr_optimized.jpg", { type: "image/jpeg" });
-                  
-                  msgBox.innerHTML = "<span style='color:#0f131c;'>Photo Ready! Verifying GPS...</span>";
-                  if(!navigator.geolocation) { msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; return; }
-                  
-                  navigator.geolocation.getCurrentPosition(pos => {
-                    let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
-                    if(dist <= ALLOWED_RADIUS) {
-                        msgBox.innerHTML = "<span style='color:#27ae60;'>Location Verified! Reading QR...</span>";
-                        document.getElementById("reader").style.display = "block";
-                        let html5QrCode = new Html5Qrcode("reader");
-                        html5QrCode.scanFile(optimizedFile, false).then(decodedText => {
-                            document.getElementById("reader").style.display = "none";
-                            onScanSuccess(decodedText); 
-                        }).catch(err => {
-                            document.getElementById("reader").style.display = "none";
-                            msgBox.innerHTML = "<span style='color:#c0392b;'>QR Code scan nahi ho paya. Clear photo lein!</span>";
-                        });
-                    } else {
-                        msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Range: 15m)</span>";
-                    }
-                  }, err => {
-                    msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Please retry!</span>";
-                  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-              }, "image/jpeg", 0.5); 
-          };
-          img.src = event.target.result;
-      };
-      reader.readAsDataURL(originalFile);
-      camInput.value = ""; 
-    });
+        } else {
+            msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Range: 15m)</span>";
+        }
+      }, err => {
+        msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak ya location turned off hai!</span>";
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
 
     function resetScannerUI() {
       document.getElementById("scanBtn").style.display = "block";
       document.getElementById("reader").style.display = "none";
+      if(html5QrCode) {
+          html5QrCode.stop().catch(err => console.log(err));
+      }
     }
 
     function onScanSuccess(decodedText) {
