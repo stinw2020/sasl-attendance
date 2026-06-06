@@ -492,20 +492,7 @@
                 // PURANA ADMIN: PIN pehle se hai, toh Dashboard ki jagah PIN screen open hogi
                 showPinScreen(); 
             }
-            // ==========================================
-// NAYA: APP MINIMIZE YA SCREEN OFF HONE PAR LOCK
-// ==========================================
-document.addEventListener("visibilitychange", function() {
-    // Jaise hi user app mein wapas aaye (visible ho)
-    if (document.visibilityState === 'visible') {
-        let existingPin = localStorage.getItem("adminPin");
-        
-        // Agar PIN set hai, toh turant PIN screen dikha do
-        if (existingPin) {
-            showPinScreen(); 
-        }
-    }
-});
+            
             // ==========================================
             // STUDENT LOGIC (Bina PIN ke seedha andar)
             // ==========================================
