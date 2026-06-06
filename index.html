@@ -152,10 +152,10 @@
       <h2 style="margin-bottom:10px;">Admin Security PIN</h2>
       <p style="color:#7f8c8d; margin-bottom:20px;">Enter PIN to unlock dashboard</p>
       <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-        <input type="password" id="pin1" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" onkeyup="movePinFocus(this, 'pin2')">
-        <input type="password" id="pin2" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" onkeyup="movePinFocus(this, 'pin3')">
-        <input type="password" id="pin3" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" onkeyup="movePinFocus(this, 'pin4')">
-        <input type="password" id="pin4" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" onkeyup="movePinFocus(this, 'verify')">
+        <input type="password" id="pin1" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin2')">
+        <input type="password" id="pin2" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin3')">
+        <input type="password" id="pin3" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin4')">
+        <input type="password" id="pin4" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'verify')">
       </div>
       <button onclick="processAdminPin()" id="pinActionBtn" style="padding:12px 30px; background:#3498db; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">Unlock</button>
       <div id="pinErrMsg" style="color:#e74c3c; margin-top:15px; font-weight:bold;"></div>
@@ -351,7 +351,24 @@ function showPinScreen() {
     document.getElementById("pinErrMsg").innerText = "";
     document.getElementById("pin1").focus();
 }
+// --- PIN BOX AUTO-NEXT AUR BACKSPACE LOGIC ---
+      function movePinFocus(curr, nextID) {
+          // Aage badhne ke liye
+          if(curr.value.length === 1) {
+              if(nextID === 'verify') processAdminPin();
+              else document.getElementById(nextID).focus();
+          }
+      }
 
+      // Backspace dabane par piche aane ke liye
+      document.addEventListener('keydown', function(e) {
+          if (e.key === 'Backspace') {
+              let active = document.activeElement;
+              if (active.id === 'pin4' && active.value === '') document.getElementById('pin3').focus();
+              else if (active.id === 'pin3' && active.value === '') document.getElementById('pin2').focus();
+              else if (active.id === 'pin2' && active.value === '') document.getElementById('pin1').focus();
+          }
+      });
 function processAdminPin() {
     let ent = document.getElementById("pin1").value + document.getElementById("pin2").value + 
               document.getElementById("pin3").value + document.getElementById("pin4").value;
@@ -466,11 +483,14 @@ if(savedRole === "Admin") {
         if(res.success) {
           msg.innerText = "";
           
+          // Login status save karo
           localStorage.setItem("isLoggedIn", "true");
           localStorage.setItem("libRole", r); 
           
           if(r === "Admin") {
-            // --- ADMIN LOGIN SUCCESS ---
+            // ==========================================
+            // ADMIN LOGIN LOGIC
+            // ==========================================
             let existingPin = localStorage.getItem("adminPin");
             document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
             document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
@@ -484,14 +504,11 @@ if(savedRole === "Admin") {
                 showPinScreen(); 
             }
           } else {
-            // --- NAYA: STUDENT LOGIN SUCCESS ---
-            // Student ka ID aur Mobile save karo taaki dashboard load ho sake
-            localStorage.setItem("libStuId", u); 
-            localStorage.setItem("libStuMob", p);
-            localStorage.setItem("libStuData", JSON.stringify(res));
-            
-            // Dashboard setup karo
-            setupStudentDashboard(res);
+            // ==========================================
+            // STUDENT LOGIN LOGIC
+            // ==========================================
+            // Seedha Location maango, jiske baad 'Link Profile' screen apne aap open hogi
+            askForLocationPermission();
           }
           
         } else {
