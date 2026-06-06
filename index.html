@@ -338,30 +338,6 @@
     </div>
   </div>
   
-// --- SMART RELOAD FUNCTION ---
-    function retryConnection() {
-      let btn = document.getElementById("reloadBtn");
-      btn.innerText = "Checking... ⏳";
-      
-      // Google ko ek chota sa invisible signal bhej kar asli net check karte hain
-      fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' })
-      .then(() => {
-          // Signal mil gaya! Yaani asli net aa chuka hai. Ab page safely reload karo.
-          btn.innerText = "Connecting... 🚀";
-          window.location.reload();
-      })
-      .catch(() => {
-          // Signal fail! Yaani abhi bhi net band hai ya kharab hai.
-          // Blank screen hone se bacha liya aur wapas error dikha diya!
-          btn.innerText = "Still Offline! ❌";
-          btn.style.background = "#c0392b"; // Red color
-          
-          setTimeout(() => { 
-              btn.innerText = "↻ Reload"; 
-              btn.style.background = "#0f131c"; // Wapas black
-          }, 2000);
-      });
-    }
   <script>
     // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
     const API_URL = "https://script.google.com/macros/s/AKfycbx4kbfaVHrqFsSO5v41RNcZPP0arAbM_oLxW0t5HiggjODp8XCjjpPkPGyHNK_FjTNy/exec";
@@ -884,6 +860,30 @@
       if(!document.getElementById("tabAtt").classList.contains("hidden")) { fetchDailyAttendance(); } 
       else if(!document.getElementById("tabChart").classList.contains("hidden")) { fetchCalendar(); }
       setTimeout(() => { btn.innerText = "↻ Refresh"; }, 1500); 
+    }
+    // --- SMART RELOAD FUNCTION ---
+    function retryConnection() {
+      let btn = document.getElementById("reloadBtn");
+      btn.innerText = "Checking... ⏳";
+      
+      // Google ko ek chota sa invisible signal bhej kar asli net check karte hain
+      fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' })
+      .then(() => {
+          // Signal mil gaya! Yaani asli net aa chuka hai. Ab page safely reload karo.
+          btn.innerText = "Connecting... 🚀";
+          window.location.reload();
+      })
+      .catch(() => {
+          // Signal fail! Yaani abhi bhi net band hai ya kharab hai.
+          // Blank screen hone se bacha liya aur wapas error dikha diya!
+          btn.innerText = "Still Offline! ❌";
+          btn.style.background = "#c0392b"; // Red color
+          
+          setTimeout(() => { 
+              btn.innerText = "↻ Reload"; 
+              btn.style.background = "#0f131c"; // Wapas black
+          }, 2000);
+      });
     }
   </script>
 </body>
