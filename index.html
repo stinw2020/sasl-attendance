@@ -470,24 +470,28 @@
             // NAYA: ADMIN PIN LOGIC
             // ==========================================
             let existingPin = localStorage.getItem("adminPin");
+            
+            // Admin ka data piche ready kar do
+            document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
+            document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
+            fetchDailyAttendance();
+
             if (!existingPin) {
+                // PEHLI BAAR: Pin set karwao
                 let newPin = prompt("Admin Security: Set a 4-Digit PIN for App Lock:");
                 if (newPin && newPin.length === 4 && !isNaN(newPin)) { 
                     localStorage.setItem("adminPin", newPin); 
                 } else { 
                     localStorage.setItem("adminPin", "0000"); // Agar admin khali chhod de
                 }
+                
+                // 🚀 NAYI LINE: PIN save hote hi page ko auto-refresh kar do
+                window.location.reload(); 
+                
+            } else {
+                // PURANA ADMIN: PIN pehle se hai, toh Dashboard ki jagah PIN screen open hogi
+                showPinScreen(); 
             }
-            
-            // Admin ka data piche ready kar do, par pehle PIN screen dikhao
-            document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
-            document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
-            fetchDailyAttendance();
-            
-            // Dashboard ki jagah PIN screen open hogi
-            showPinScreen(); 
-
-          } else {
             // ==========================================
             // STUDENT LOGIC (Bina PIN ke seedha andar)
             // ==========================================
