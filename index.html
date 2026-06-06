@@ -343,7 +343,7 @@
     let globalCalData = [];
     let html5QrCode = null;
 
-    // --- NAYA API CALL FUNCTION ---
+    // --- API CALL FUNCTION ---
     function callBackend(action, data, onSuccess, onFailure) {
       fetch(API_URL, {
         redirect: "follow",
@@ -360,12 +360,15 @@
     }
 
     // =========================================
-    // ADMIN PIN & LOCK LOGIC
+    // ADMIN PIN & MINIMIZE LOCK LOGIC
     // =========================================
     document.addEventListener("visibilitychange", () => {
-      // Jab app minimize ho kar wapas open ho, tab sirf Admin ko lock karna
+      // Jab app background se wapas khulegi
       if (document.visibilityState === "visible") {
-        if (localStorage.getItem("libRole") === "Admin") {
+        let role = localStorage.getItem("libRole");
+        let pin = localStorage.getItem("adminPin");
+        // Lock sirf tab hoga jab Admin ho aur uska PIN pehle se set ho!
+        if (role === "Admin" && pin) {
           showPinScreen();
         }
       }
@@ -418,7 +421,9 @@
       }, 400);
     }
 
-    // --- SAFE AUTO-LOGIN LOGIC ---
+    // =========================================
+    // SAFE AUTO-LOGIN LOGIC
+    // =========================================
     window.onload = function() {
       try {
         let savedRole = localStorage.getItem("libRole");
@@ -433,11 +438,17 @@
           if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
           fetchDailyAttendance();
 
-          // seedha dashboard open karne ke bajaye PIN screen show karo
-          showPinScreen(); 
+          // App open hone par pehle PIN maange (Sirf Admin se)
+          let savedPin = localStorage.getItem("adminPin");
+          if(savedPin) {
+              showPinScreen(); 
+          } else {
+              show('adminDashboard');
+          }
           return;
         }
         
+        // Student ke liye koi PIN nahi. Direct Profile open karo
         if(savedRole === "Student" && savedId && savedMob) {
           if(savedData) { setupStudentDashboard(JSON.parse(savedData)); } 
           else { document.getElementById("loginScreen").classList.add("hidden"); }
@@ -488,6 +499,9 @@
       }
     }
 
+    // =========================================
+    // NAYA SECURE LOGIN SYSTEM (NO RELOAD)
+    // =========================================
     function processLogin() {
       let r = document.getElementById("roleSelect").value;
       let u = (r === "Student") ? document.getElementById("loginUser").value.trim() : document.getElementById("adminUser").value.trim();
@@ -500,23 +514,26 @@
       callBackend("verifyUserLogin", {r: r, u: u, p: p}, res => {
         if(res.success) {
           msg.innerText = "";
+          localStorage.setItem("isLoggedIn", "true");
+          
           if(r === "Admin") {
             localStorage.setItem("libRole", "Admin"); 
-            let existingPin = localStorage.getItem("adminPin");
-            
             document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
             document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
             fetchDailyAttendance();
 
-            // Setup new PIN if not exists, otherwise show lock screen
+            let existingPin = localStorage.getItem("adminPin");
+            // Agar Admin ka PIN nahi bana hai, toh login ke turant baad pehle PIN prompt karo
             if (!existingPin) {
                 let newPin = prompt("Admin Security: Set a 4-Digit PIN for App Lock:");
                 localStorage.setItem("adminPin", (newPin && newPin.length === 4 && !isNaN(newPin)) ? newPin : "0000");
-                window.location.reload(); 
-            } else {
-                showPinScreen(); 
             }
+            
+            // YAHAN FIX HAI: Bina reload kiye, seedha dashboard khol do!
+            show('adminDashboard'); 
+            
           } else {
+            // Student Login hone par PIN prompt bilkul nahi aayega
             askForLocationPermission();
           }
         } else {
@@ -566,7 +583,7 @@
     }
 
     function setupStudentDashboard(res) {
-      show('studentDashboard'); // Fix for blank screen issue
+      show('studentDashboard'); 
       studentData = res;
       document.getElementById("dName").innerText = res.name;
       document.getElementById("dId").innerText = res.id;
@@ -607,12 +624,11 @@
       });
     } 
 
-   // --- DIRECT LIVE QR SCANNER (iOS FIX) ---
+   // --- DIRECT LIVE QR SCANNER ---
     function startScanner() {
       let msgBox = document.getElementById("attMsg");
       msgBox.innerHTML = "<span style='color:#0f131c;'>Starting Camera...</span>";
       
-      // iOS Rule: Button dabate hi sidha camera kholo (Bina GPS ka wait kiye)
       document.getElementById("reader").style.display = "block";
       document.getElementById("scanBtn").style.display = "none"; 
       
@@ -624,7 +640,6 @@
           { facingMode: "environment" }, 
           { fps: 10, qrbox: { width: 250, height: 250 } }, 
           (decodedText) => {
-              // Jaise hi QR scan ho, camera band karo aur Agla step (GPS) shuru karo
               html5QrCode.stop().then(() => {
                   document.getElementById("reader").style.display = "none";
                   document.getElementById("scanBtn").style.display = "block"; 
@@ -638,7 +653,6 @@
       });
     }
 
-    // --- NAYA STEP: QR scan hone ke BAAD GPS check karna ---
     function verifyLocationAndMark(decodedText) {
       if (decodedText.trim() !== currentSecretQR) {
          document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; 
@@ -653,19 +667,15 @@
         return; 
       }
       
-      // Ab aaram se location mangenge
       navigator.geolocation.getCurrentPosition(pos => {
         let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
         
         if(dist <= ALLOWED_RADIUS) {
             msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
-            
-            // Backend par entry bhejna
             callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
               if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + "</span>";
               else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>" + res.message + "</span>";
             });
-            
         } else {
             msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Range: 15m)</span>";
         }
@@ -680,18 +690,6 @@
       if(html5QrCode) {
           html5QrCode.stop().catch(err => console.log(err));
       }
-    }
-
-    function onScanSuccess(decodedText) {
-      if (decodedText.trim() !== currentSecretQR) {
-         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code!</span>"; return; 
-      }
-      document.getElementById("attMsg").innerHTML = "<span style='color:#0f131c;'>Marking Attendance... Please wait.</span>";
-      
-      callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
-        if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + "</span>";
-        else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>" + res.message + "</span>";
-      });
     }
 
     function saveAdminQRCode() {
@@ -814,39 +812,21 @@
     function refreshStudentData() {
       let btn = document.getElementById("stuRefreshBtn");
       btn.innerText = "↻ Refreshing...";
-      
-      // Memory se student ka ID aur Mobile nikalna
       let savedId = localStorage.getItem("libStuId");
       let savedMob = localStorage.getItem("libStuMob");
       
-      if(!savedId || !savedMob) {
-          btn.innerText = "↻ Refresh";
-          return;
-      }
+      if(!savedId || !savedMob) { btn.innerText = "↻ Refresh"; return; }
 
-      // Server se poora fresh data mangwana
       callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
           if(res.success) {
-              if(!res.active) { 
-                  show('inactiveScreen'); // Agar kisi ne block kar diya ho
-              } else {
-                  // 1. Naya data memory (offline cache) me save karna
+              if(!res.active) { show('inactiveScreen'); } 
+              else {
                   localStorage.setItem("libStuData", JSON.stringify(res));
-                  
-                  // 2. Poora Dashboard (Name, Due Date, Status aur Notices) update karna
                   setupStudentDashboard(res);
-                  
-                  // Button ko wapas normal karna
                   setTimeout(() => { btn.innerText = "↻ Refresh"; }, 500);
               }
-          } else {
-              // Agar ID/Mobile server par match na ho toh logout kar do
-              logout();
-          }
-      }, err => {
-          console.error("Refresh Error: ", err);
-          btn.innerText = "↻ Refresh";
-      });
+          } else { logout(); }
+      }, err => { console.error("Refresh Error: ", err); btn.innerText = "↻ Refresh"; });
     }
 
     function refreshAdminData() {
