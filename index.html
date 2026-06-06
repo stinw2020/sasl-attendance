@@ -466,49 +466,39 @@ if(savedRole === "Admin") {
         if(res.success) {
           msg.innerText = "";
           
-          // Dono ke liye login status save karein taaki minimize sensor kaam kare
           localStorage.setItem("isLoggedIn", "true");
           localStorage.setItem("libRole", r); 
           
           if(r === "Admin") {
-            // ==========================================
-            // NAYA: ADMIN PIN LOGIC
-            // ==========================================
+            // --- ADMIN LOGIN SUCCESS ---
             let existingPin = localStorage.getItem("adminPin");
-            
-            // Admin ka data piche ready kar do
             document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
             document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
             fetchDailyAttendance();
 
             if (!existingPin) {
-                // PEHLI BAAR: Pin set karwao
                 let newPin = prompt("Admin Security: Set a 4-Digit PIN for App Lock:");
-                if (newPin && newPin.length === 4 && !isNaN(newPin)) { 
-                    localStorage.setItem("adminPin", newPin); 
-                } else { 
-                    localStorage.setItem("adminPin", "0000"); // Agar admin khali chhod de
-                }
-                
-                // 🚀 NAYI LINE: PIN save hote hi page ko auto-refresh kar do
+                localStorage.setItem("adminPin", (newPin && newPin.length === 4 && !isNaN(newPin)) ? newPin : "0000");
                 window.location.reload(); 
-                
             } else {
-                // PURANA ADMIN: PIN pehle se hai, toh Dashboard ki jagah PIN screen open hogi
                 showPinScreen(); 
             }
+          } else {
+            // --- NAYA: STUDENT LOGIN SUCCESS ---
+            // Student ka ID aur Mobile save karo taaki dashboard load ho sake
+            localStorage.setItem("libStuId", u); 
+            localStorage.setItem("libStuMob", p);
+            localStorage.setItem("libStuData", JSON.stringify(res));
             
-            // ==========================================
-            // STUDENT LOGIC (Bina PIN ke seedha andar)
-            // ==========================================
-            askForLocationPermission();
+            // Dashboard setup karo
+            setupStudentDashboard(res);
           }
+          
         } else {
           msg.innerText = res.message;
         }
       });
     }
-
     function askForLocationPermission() {
       let msg = document.getElementById("loginMsg");
       msg.style.color = "blue";
