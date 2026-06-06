@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.stinw2020.twa",
+        "sha256_cert_fingerprints": ["8E:AB:85:2E:F9:49:45:72:DC:27:45:53:86:81:C6:8F:9A:C0:70:07:A8:68:66:2C:B5:75:C9:87:B3:A5:E8:A3"]
+      }
+    }]
