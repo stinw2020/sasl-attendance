@@ -348,7 +348,7 @@
     let globalCalData = [];
     let html5QrCode = null;
 
-    // --- API CALL FUNCTION ---
+   // --- NAYA API CALL FUNCTION (WEBVIEW NET FIX) ---
     function callBackend(action, data, onSuccess, onFailure) {
       fetch(API_URL, {
         redirect: "follow",
@@ -360,6 +360,11 @@
       .then(res => { if(onSuccess) onSuccess(res); })
       .catch(err => {
         console.error("Fetch Error:", err);
+        
+        // 🚀 YAHAN FIX HAI: Agar Google Server se link toota, matlab Net OFF hai!
+        // Turant half-loaded screen hatao aur Offline screen dikhao
+        show('offlineScreen');
+        
         if(onFailure) onFailure(err);
       });
     }
