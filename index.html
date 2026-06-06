@@ -183,7 +183,12 @@
     <button onclick="processAdminPin()" id="pinActionBtn" style="padding:12px 30px; background:#3498db; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">Unlock</button>
     <div id="pinErrMsg" style="color:#e74c3c; margin-top:15px; font-weight:bold;"></div>
   </div>
-
+<div id="offlineScreen" class="hidden" style="text-align:center; padding:50px 20px; background:#f0f2f5; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:999999; position:fixed; top:0; left:0; width:100%;">
+    <div style="font-size:60px; margin-bottom:10px;">📶</div>
+    <h1 style="color:#c0392b; margin-bottom:10px;">No Internet Connection</h1>
+    <p style="color:#7f8c8d; margin-bottom:25px; font-size:16px;">App chalane ke liye net connection zaroori hai. Kripya apna mobile data ya Wi-Fi on karein.</p>
+    <button onclick="window.location.reload();" style="width:auto; padding:14px 40px; background:#0f131c; border-radius:30px;">↻ Reload</button>
+  </div>
   <div id="loginScreen" class="card hidden">
     <h2 style="text-align:center; color:#0f131c; margin-top:0;">SASL Attendance Portal</h2>
     <p style="text-align:center; color:#7f8c8d; font-size:14px; margin-top:-10px;">Login to your account</p>
@@ -422,10 +427,22 @@
     }
 
     // =========================================
-    // SAFE AUTO-LOGIN LOGIC
+    // SAFE AUTO-LOGIN LOGIC (WITH OFFLINE CHECK)
     // =========================================
+    
+    // Agar chalu app ke beech mein net band ho jaye toh
+    window.addEventListener('offline', () => show('offlineScreen'));
+    // Agar net wapas aa jaye toh khud reload kar lo
+    window.addEventListener('online', () => window.location.reload());
+
     window.onload = function() {
       try {
+        // SABSE PEHLE CHECK KARO KI NET HAI YA NAHI!
+        if (!navigator.onLine) {
+            show('offlineScreen');
+            return;
+        }
+
         let savedRole = localStorage.getItem("libRole");
         let savedId = localStorage.getItem("libStuId");
         let savedMob = localStorage.getItem("libStuMob");
@@ -438,7 +455,6 @@
           if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
           fetchDailyAttendance();
 
-          // App open hone par pehle PIN maange (Sirf Admin se)
           let savedPin = localStorage.getItem("adminPin");
           if(savedPin) {
               showPinScreen(); 
@@ -448,7 +464,6 @@
           return;
         }
         
-        // Student ke liye koi PIN nahi. Direct Profile open karo
         if(savedRole === "Student" && savedId && savedMob) {
           if(savedData) { setupStudentDashboard(JSON.parse(savedData)); } 
           else { document.getElementById("loginScreen").classList.add("hidden"); }
@@ -461,7 +476,11 @@
                     if(!savedData) setupStudentDashboard(res); 
                 }
               } else { logout(); }
-          }, err => { console.error("Server Error: ", err); show('loginScreen'); });
+          }, err => { 
+              console.error("Server Error: ", err); 
+              // Agar background API fail ho aur net na ho toh login ki jagah offline screen dikhao
+              if (!navigator.onLine) show('offlineScreen');
+          });
         } else {
           show('loginScreen');
         }
