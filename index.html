@@ -171,6 +171,19 @@
 </head>
 <body>
 
+  <div id="pinScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f131c; color: white; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; padding: 20px;">
+    <h2 style="margin-bottom:10px;">Admin Security PIN</h2>
+    <p style="color:#7f8c8d; margin-bottom:20px;">Enter PIN to unlock dashboard</p>
+    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+      <input type="password" id="pin1" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin2')">
+      <input type="password" id="pin2" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin3')">
+      <input type="password" id="pin3" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin4')">
+      <input type="password" id="pin4" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'verify')">
+    </div>
+    <button onclick="processAdminPin()" id="pinActionBtn" style="padding:12px 30px; background:#3498db; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">Unlock</button>
+    <div id="pinErrMsg" style="color:#e74c3c; margin-top:15px; font-weight:bold;"></div>
+  </div>
+
   <div id="loginScreen" class="card hidden">
     <h2 style="text-align:center; color:#0f131c; margin-top:0;">SASL Attendance Portal</h2>
     <p style="text-align:center; color:#7f8c8d; font-size:14px; margin-top:-10px;">Login to your account</p>
@@ -328,7 +341,7 @@
     let libLat = 0, libLng = 0;
     let currentSecretQR = "";
     let globalCalData = [];
-    let html5QrCode = null; // Live scanner object
+    let html5QrCode = null;
 
     // --- NAYA API CALL FUNCTION ---
     function callBackend(action, data, onSuccess, onFailure) {
@@ -346,6 +359,65 @@
       });
     }
 
+    // =========================================
+    // ADMIN PIN & LOCK LOGIC
+    // =========================================
+    document.addEventListener("visibilitychange", () => {
+      // Jab app minimize ho kar wapas open ho, tab sirf Admin ko lock karna
+      if (document.visibilityState === "visible") {
+        if (localStorage.getItem("libRole") === "Admin") {
+          showPinScreen();
+        }
+      }
+    });
+
+    function showPinScreen() {
+      // Saari screens ko hide kardo
+      document.querySelectorAll('body > div:not(script):not(#pinScreen)').forEach(el => el.classList.add('hidden'));
+      // Sirf PIN screen open karo
+      document.getElementById("pinScreen").style.display = "flex";
+      
+      document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
+      document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
+      document.getElementById("pinErrMsg").innerText = "";
+      document.getElementById("pin1").focus();
+    }
+
+    function movePinFocus(curr, nextID) {
+      if(curr.value.length === 1) {
+        if(nextID === 'verify') processAdminPin();
+        else document.getElementById(nextID).focus();
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace') {
+        let active = document.activeElement;
+        if (active.id === 'pin4' && active.value === '') document.getElementById('pin3').focus();
+        else if (active.id === 'pin3' && active.value === '') document.getElementById('pin2').focus();
+        else if (active.id === 'pin2' && active.value === '') document.getElementById('pin1').focus();
+      }
+    });
+
+    function processAdminPin() {
+      let ent = document.getElementById("pin1").value + document.getElementById("pin2").value + document.getElementById("pin3").value + document.getElementById("pin4").value;
+      let savedPin = localStorage.getItem("adminPin");
+      
+      document.getElementById("pinActionBtn").innerText = "Verifying...";
+      setTimeout(() => {
+        document.getElementById("pinActionBtn").innerText = "Unlock";
+        if(ent === savedPin) {
+          document.getElementById("pinScreen").style.display = "none";
+          show('adminDashboard');
+        } else {
+          document.getElementById("pinErrMsg").innerText = "Incorrect PIN!";
+          document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
+          document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
+          document.getElementById("pin1").focus();
+        }
+      }, 400);
+    }
+
     // --- SAFE AUTO-LOGIN LOGIC ---
     window.onload = function() {
       try {
@@ -355,12 +427,14 @@
         let savedData = localStorage.getItem("libStuData"); 
         
         if(savedRole === "Admin") {
-          show('adminDashboard'); 
           let dateInput = document.getElementById("attDate");
           if(dateInput) dateInput.value = new Date().toISOString().split('T')[0]; 
           let monthInput = document.getElementById("chartMonth");
           if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
           fetchDailyAttendance();
+
+          // seedha dashboard open karne ke bajaye PIN screen show karo
+          showPinScreen(); 
           return;
         }
         
@@ -386,7 +460,7 @@
     };
 
     function show(id) { 
-      document.querySelectorAll('body > div:not(script)').forEach(el => el.classList.add('hidden')); 
+      document.querySelectorAll('body > div:not(script):not(#pinScreen)').forEach(el => el.classList.add('hidden')); 
       let target = document.getElementById(id);
       if(target) target.classList.remove('hidden'); 
     }
@@ -428,10 +502,20 @@
           msg.innerText = "";
           if(r === "Admin") {
             localStorage.setItem("libRole", "Admin"); 
-            show('adminDashboard'); 
+            let existingPin = localStorage.getItem("adminPin");
+            
             document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
             document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
             fetchDailyAttendance();
+
+            // Setup new PIN if not exists, otherwise show lock screen
+            if (!existingPin) {
+                let newPin = prompt("Admin Security: Set a 4-Digit PIN for App Lock:");
+                localStorage.setItem("adminPin", (newPin && newPin.length === 4 && !isNaN(newPin)) ? newPin : "0000");
+                window.location.reload(); 
+            } else {
+                showPinScreen(); 
+            }
           } else {
             askForLocationPermission();
           }
@@ -482,6 +566,7 @@
     }
 
     function setupStudentDashboard(res) {
+      show('studentDashboard'); // Fix for blank screen issue
       studentData = res;
       document.getElementById("dName").innerText = res.name;
       document.getElementById("dId").innerText = res.id;
@@ -518,7 +603,6 @@
               });
             }
             document.getElementById("noticeList").innerHTML = nHtml || "No active notices.";
-            show('studentDashboard');
           } catch(e) { }
       });
     } 
