@@ -9,7 +9,29 @@
   <meta name="apple-mobile-web-app-title" content="SASL App">
   <link rel="apple-touch-icon" href="https://i.postimg.cc/Jhb1ch14/sasl-logo.jpg">
 
-  <link rel="manifest" href="manifest.json">
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const manifest = {
+        "name": "SASL Attendance Portal",
+        "short_name": "SASL App",
+        "display": "standalone",
+        "background_color": "#f0f2f5",
+        "theme_color": "#0f131c",
+        "icons": [{
+          "src": "https://i.postimg.cc/Jhb1ch14/sasl-logo.jpg",
+          "sizes": "512x512",
+          "type": "image/png"
+        }]
+      };
+      const stringManifest = JSON.stringify(manifest);
+      const blob = new Blob([stringManifest], {type: 'application/json'});
+      const manifestURL = URL.createObjectURL(blob);
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = manifestURL;
+      document.head.appendChild(link);
+    });
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>SASL Attendance Portal</title>
@@ -148,41 +170,28 @@
   </style>
 </head>
 <body>
-<div id="pinScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f131c; color: white; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; padding: 20px;">
-      <h2 style="margin-bottom:10px;">Admin Security PIN</h2>
-      <p style="color:#7f8c8d; margin-bottom:20px;">Enter PIN to unlock dashboard</p>
-      <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-        <input type="password" id="pin1" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin2')">
-        <input type="password" id="pin2" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin3')">
-        <input type="password" id="pin3" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin4')">
-        <input type="password" id="pin4" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'verify')">
-      </div>
-      <button onclick="processAdminPin()" id="pinActionBtn" style="padding:12px 30px; background:#3498db; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">Unlock</button>
-      <div id="pinErrMsg" style="color:#e74c3c; margin-top:15px; font-weight:bold;"></div>
-    </div>
+
   <div id="loginScreen" class="card hidden">
     <h2 style="text-align:center; color:#0f131c; margin-top:0;">SASL Attendance Portal</h2>
     <p style="text-align:center; color:#7f8c8d; font-size:14px; margin-top:-10px;">Login to your account</p>
     
-    <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Select Role</label>
+    <label style="font-size:14px; font-weight:bold; color:#34495e;">Select Role</label>
     <select id="roleSelect" onchange="toggleLoginFields()">
       <option value="Student">Student</option>
       <option value="Admin">Admin</option>
     </select>
     
     <div id="studentLoginFields">
-      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Username</label>
+      <label style="font-size:14px; font-weight:bold; color:#34495e;">Username</label>
       <input type="text" id="loginUser" placeholder="Enter Username">
-      
-      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Password</label>
+      <label style="font-size:14px; font-weight:bold; color:#34495e;">Password</label>
       <input type="password" id="loginPass" placeholder="Enter Password">
     </div>
     
     <div id="adminLoginFields" class="hidden">
-      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Admin Username</label>
+      <label style="font-size:14px; font-weight:bold; color:#34495e;">Admin Username</label>
       <input type="text" id="adminUser" placeholder="Admin Username">
-      
-      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Admin Password</label>
+      <label style="font-size:14px; font-weight:bold; color:#34495e;">Admin Password</label>
       <input type="password" id="adminPass" placeholder="Admin Password">
     </div>
 
@@ -309,157 +318,86 @@
   </div>
 
   <script>
-    // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
-    const API_URL = "https://script.google.com/macros/s/AKfycbx4kbfaVHrqFsSO5v41RNcZPP0arAbM_oLxW0t5HiggjODp8XCjjpPkPGyHNK_FjTNy/exec";
-
     const ALLOWED_RADIUS = 15;
     let studentData = null;
     let libLat = 0, libLng = 0;
     let currentSecretQR = "";
+    let scanner = null;
     let globalCalData = [];
-    let html5QrCode = null; // Live scanner object
 
-    // --- NAYA API CALL FUNCTION ---
-    function callBackend(action, data, onSuccess, onFailure) {
-      fetch(API_URL, {
-        redirect: "follow",
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, 
-        body: JSON.stringify({ action: action, data: data })
-      })
-      .then(response => response.json())
-      .then(res => { if(onSuccess) onSuccess(res); })
-      .catch(err => {
-        console.error("Fetch Error:", err);
-        if(onFailure) onFailure(err);
-      });
-    }
-// --- ADMIN PIN LOGIC ---
-function showPinScreen() {
-    // Sabse pehle saare screens ko hide karo
-    document.getElementById("loginScreen").classList.add("hidden");
-    document.getElementById("adminDashboard").classList.add("hidden");
-    document.getElementById("studentDashboard").classList.add("hidden");
-    document.getElementById("linkStudentScreen").classList.add("hidden");
-    
-    // PIN screen show karo
-    document.getElementById("pinScreen").style.display = "flex";
-    
-    // Input reset karo
-    document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
-    document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
-    document.getElementById("pinErrMsg").innerText = "";
-    document.getElementById("pin1").focus();
-}
-// --- PIN BOX AUTO-NEXT AUR BACKSPACE LOGIC ---
-      function movePinFocus(curr, nextID) {
-          // Aage badhne ke liye
-          if(curr.value.length === 1) {
-              if(nextID === 'verify') processAdminPin();
-              else document.getElementById(nextID).focus();
-          }
-      }
-
-      // Backspace dabane par piche aane ke liye
-      document.addEventListener('keydown', function(e) {
-          if (e.key === 'Backspace') {
-              let active = document.activeElement;
-              if (active.id === 'pin4' && active.value === '') document.getElementById('pin3').focus();
-              else if (active.id === 'pin3' && active.value === '') document.getElementById('pin2').focus();
-              else if (active.id === 'pin2' && active.value === '') document.getElementById('pin1').focus();
-          }
-      });
-function processAdminPin() {
-    let ent = document.getElementById("pin1").value + document.getElementById("pin2").value + 
-              document.getElementById("pin3").value + document.getElementById("pin4").value;
-    let savedPin = localStorage.getItem("adminPin");
-    
-    document.getElementById("pinActionBtn").innerText = "Verifying...";
-    setTimeout(() => {
-        document.getElementById("pinActionBtn").innerText = "Unlock";
-        if(ent === savedPin) {
-            document.getElementById("pinScreen").style.display = "none";
-            // Yahan ID fix ki hai: Dashboard show karo
-            document.getElementById("adminDashboard").classList.remove("hidden");
-        } else {
-            document.getElementById("pinErrMsg").innerText = "Incorrect PIN!";
-            document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
-            document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
-            document.getElementById("pin1").focus();
-        }
-    }, 400);
-}
-
-      // --- APP SENSOR (Home Button dabane par lock hona) ---
-      document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") {
-              // Sirf tab lock lagega jab user Admin ho aur pehle se logged in ho
-              if (localStorage.getItem("isLoggedIn") === "true" && localStorage.getItem("userRole") === "Admin") {
-                  showPinScreen();
-              }
-          }
-      });
-   // --- SAFE AUTO-LOGIN LOGIC ---
+    // --- SAFE AUTO-LOGIN LOGIC ---
     window.onload = function() {
-      try {
-        let savedRole = localStorage.getItem("libRole");
-        let savedId = localStorage.getItem("libStuId");
-        let savedMob = localStorage.getItem("libStuMob");
-        let savedData = localStorage.getItem("libStuData"); 
-        
-        if(savedRole === "Admin") {
-            showPinScreen(); 
-            let dateInput = document.getElementById("attDate");
-            if(dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-            let monthInput = document.getElementById("chartMonth");
-            if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
-            fetchDailyAttendance();
-            return;
-        }
-        
-        if(savedRole === "Student" && savedId && savedMob) {
-          // 1. Agar memory mein data hai, toh TURANT dashboard dikhao (No Blank Screen)
-          if(savedData) { 
-              setupStudentDashboard(JSON.parse(savedData)); 
-          } else { 
-              show('loginScreen'); // Failsafe
-          }
-          
-          // 2. Background mein check karo ki student block toh nahi hua
-          callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
-              if(res.success) {
-                if(!res.active) { show('inactiveScreen'); }
-                else { 
-                    localStorage.setItem("libStuData", JSON.stringify(res)); 
-                    setupStudentDashboard(res); // Dashboard background mein update kar do
-                }
-              } else { logout(); }
-          }, err => { 
-              console.error("Server Error: ", err); 
-          });
-        } else {
-          show('loginScreen');
-        }
-      } catch (e) {
-        show('loginScreen');
+  try {
+    let savedRole = localStorage.getItem("libRole");
+    let savedId = localStorage.getItem("libStuId");
+    let savedMob = localStorage.getItem("libStuMob");
+    let savedData = localStorage.getItem("libStuData"); // NAYA: Offline Data check karna
+    
+    // 1. Admin Auto-Login
+    if(savedRole === "Admin") {
+      show('adminDashboard'); 
+      let dateInput = document.getElementById("attDate");
+      if(dateInput) dateInput.value = new Date().toISOString().split('T')[0]; 
+      let monthInput = document.getElementById("chartMonth");
+      if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
+      if(typeof fetchDailyAttendance === "function") fetchDailyAttendance();
+      return;
+    }
+    
+    // 2. Student Auto-Login
+    if(savedRole === "Student" && savedId && savedMob) {
+      
+      // 🚀 NAYA JADOO: Agar data phone me save hai, toh 0 second me dashboard dikhao!
+      if(savedData) {
+          setupStudentDashboard(JSON.parse(savedData));
+      } else {
+          // Agar nahi hai, toh purane style ki tarah sirf background rakho
+          document.getElementById("loginScreen").classList.add("hidden");
       }
-    };
+      
+      // Background me chup-chap check karo ki bacha block toh nahi hua
+      google.script.run
+        .withSuccessHandler(res => {
+          if(res.success) {
+            if(!res.active) { show('inactiveScreen'); }
+            else { 
+                // Naya data phone me save kar lo aglibaar ke liye
+                localStorage.setItem("libStuData", JSON.stringify(res)); 
+                // Agar pehli baar khul raha hai tabhi dashboard set karo
+                if(!savedData) setupStudentDashboard(res); 
+            }
+          } else { logout(); }
+        })
+        .withFailureHandler(err => { console.error("Server Error: ", err); })
+        .checkStudentLoginAndStatus(savedId, savedMob);
+    } else {
+      show('loginScreen');
+    }
+  } catch (e) {
+    console.error("App Loading Error: ", e);
+    show('loginScreen');
+  }
+};
 
     function show(id) { 
+      // Sabhi main div ko hide karke sirf zarurat wala dikhana
       document.querySelectorAll('body > div:not(script)').forEach(el => el.classList.add('hidden')); 
       let target = document.getElementById(id);
       if(target) target.classList.remove('hidden'); 
     }
     
     function logout() { 
-      localStorage.clear(); 
+      localStorage.clear(); // Yeh poori memory pakke taur par delete kar dega
       studentData = null; 
+      
+      // Khali karna
       if(document.getElementById("loginUser")) document.getElementById("loginUser").value = ""; 
       if(document.getElementById("loginPass")) document.getElementById("loginPass").value = "";
       if(document.getElementById("adminUser")) document.getElementById("adminUser").value = ""; 
       if(document.getElementById("adminPass")) document.getElementById("adminPass").value = "";
       if(document.getElementById("stuIdInput")) document.getElementById("stuIdInput").value = "";
       if(document.getElementById("stuMobInput")) document.getElementById("stuMobInput").value = "";
+      
       show('loginScreen'); 
     }
 
@@ -483,47 +421,30 @@ function processAdminPin() {
       if(u === "" || p === "") { msg.innerText = "Please enter all fields"; return; }
       msg.innerText = "Authenticating...";
       
-      callBackend("verifyUserLogin", {r: r, u: u, p: p}, res => {
+      google.script.run.withSuccessHandler(res => {
         if(res.success) {
           msg.innerText = "";
-          
-          // Login status save karo
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("libRole", r); 
-          
           if(r === "Admin") {
-            // ==========================================
-            // ADMIN LOGIN LOGIC
-            // ==========================================
-            let existingPin = localStorage.getItem("adminPin");
+            // ADMIN MEMORY SAVE
+            localStorage.setItem("libRole", "Admin"); 
+            show('adminDashboard'); 
             document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
             document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
             fetchDailyAttendance();
-
-            if (!existingPin) {
-                let newPin = prompt("Admin Security: Set a 4-Digit PIN for App Lock:");
-                localStorage.setItem("adminPin", (newPin && newPin.length === 4 && !isNaN(newPin)) ? newPin : "0000");
-                window.location.reload(); 
-            } else {
-                showPinScreen(); 
-            }
           } else {
-            // ==========================================
-            // STUDENT LOGIN LOGIC
-            // ==========================================
-            // Seedha Location maango, jiske baad 'Link Profile' screen apne aap open hogi
             askForLocationPermission();
           }
-          
         } else {
           msg.innerText = res.message;
         }
-      });
+      }).verifyUserLogin(r, u, p);
     }
+
     function askForLocationPermission() {
       let msg = document.getElementById("loginMsg");
       msg.style.color = "blue";
       msg.innerText = "Requesting GPS Location Permission...";
+      
       if(!navigator.geolocation) { msg.style.color = "red"; msg.innerText = "GPS Not Supported!"; return; }
       
       navigator.geolocation.getCurrentPosition(pos => {
@@ -543,8 +464,10 @@ function processAdminPin() {
       if(id === "" || mob === "") { msg.innerText = "Enter ID and Mobile"; return; }
       msg.innerText = "Loading Dashboard...";
       
-      callBackend("checkStudentLoginAndStatus", {id: id, mob: mob}, res => {
+      google.script.run
+      .withSuccessHandler(res => {
         if(res.success) {
+          // STUDENT MEMORY SAVE (PERMANENT LOCK)
           localStorage.setItem("libRole", "Student");
           localStorage.setItem("libStuId", id);
           localStorage.setItem("libStuMob", mob);
@@ -555,15 +478,14 @@ function processAdminPin() {
         } else {
           msg.innerText = res.message;
         }
-      }, err => {
-        msg.innerText = "System Error: Network issue";
-      });
+      })
+      .withFailureHandler(err => {
+        msg.innerText = "System Error: " + err.message;
+      })
+      .checkStudentLoginAndStatus(id, mob);
     }
 
-   function setupStudentDashboard(res) {
-      // 🚀 FIX: Turant dashboard show karo taaki blank screen na aaye!
-      show('studentDashboard');
-
+    function setupStudentDashboard(res) {
       studentData = res;
       document.getElementById("dName").innerText = res.name;
       document.getElementById("dId").innerText = res.id;
@@ -585,10 +507,14 @@ function processAdminPin() {
         if(m) document.getElementById("dPhoto").src = "https://drive.google.com/thumbnail?id=" + m[0] + "&sz=w200";
       }
       
-      // Notice Board background mein load hota rahega
-      callBackend("getDashboardExtras", {}, dash => {
+      // FIX: Null error se bachane ke liye Safety Check lagaya gaya hai
+      google.script.run
+        .withSuccessHandler(dash => {
           try {
-            if (!dash) dash = { lat: 0, lng: 0, qrCode: "", notices: [] };
+            if (!dash) {
+               dash = { lat: 0, lng: 0, qrCode: "", notices: [] };
+            }
+
             libLat = dash.lat || 0; 
             libLng = dash.lng || 0;
             currentSecretQR = dash.qrCode || ""; 
@@ -597,109 +523,149 @@ function processAdminPin() {
             if(dash.notices && dash.notices.length > 0) {
               dash.notices.forEach(n => { 
                 let safeText = n.text ? n.text.toString().replace(/\n/g, '<br>') : "";
-                if(safeText) nHtml += "<div style='margin-bottom:12px; border-bottom:1px dashed #ccc; padding-bottom:8px;'><b>["+n.date+"]</b><br>"+safeText+"</div>"; 
+                if(safeText) {
+                   nHtml += "<div style='margin-bottom:12px; border-bottom:1px dashed #ccc; padding-bottom:8px;'><b>["+n.date+"]</b><br>"+safeText+"</div>"; 
+                }
               });
             }
             document.getElementById("noticeList").innerHTML = nHtml || "No active notices.";
-          } catch(e) { }
-      });
-    }
+            show('studentDashboard');
+          } catch(e) {
+            alert("Dashboard loading error: " + e.message);
+          }
+        })
+        .withFailureHandler(err => {
+            alert("Server Error: " + err.message);
+        })
+        .getDashboardExtras();
+    } 
 
-    // --- DIRECT LIVE QR SCANNER (iOS FIX) ---
+    // --- 1-CLICK REVERSE FLOW (WITH AUTO-COMPRESSOR FOR iPAD/iOS) ---
+    
+    let camInput = document.createElement("input");
+    camInput.type = "file";
+    camInput.accept = "image/jpeg, image/png"; // iOS FIX: Apple format ko normal format me badalna
+    camInput.capture = "environment"; 
+    camInput.id = "nativeCameraInput";
+    camInput.style.display = "none";
+    document.body.appendChild(camInput);
+
     function startScanner() {
       let msgBox = document.getElementById("attMsg");
-      msgBox.innerHTML = "<span style='color:#0f131c;'>Starting Camera...</span>";
-      
-      // iOS Rule: Button dabate hi sidha camera kholo (Bina GPS ka wait kiye)
-      document.getElementById("reader").style.display = "block";
-      document.getElementById("scanBtn").style.display = "none"; 
-      
-      if(!html5QrCode) {
-          html5QrCode = new Html5Qrcode("reader");
-      }
-      
-      html5QrCode.start(
-          { facingMode: "environment" }, 
-          { fps: 10, qrbox: { width: 250, height: 250 } }, 
-          (decodedText) => {
-              // Jaise hi QR scan ho, camera band karo aur Agla step (GPS) shuru karo
-              html5QrCode.stop().then(() => {
-                  document.getElementById("reader").style.display = "none";
-                  document.getElementById("scanBtn").style.display = "block"; 
-                  verifyLocationAndMark(decodedText); 
-              }).catch(err => console.log(err));
-          },
-          (errorMessage) => { } 
-      ).catch(err => {
-          msgBox.innerHTML = "<span style='color:#c0392b;'>Camera Permission Denied! Kripya browser me camera allow karein.</span>";
-          resetScannerUI();
-      });
+      msgBox.innerHTML = "<span style='color:#0f131c;'>Opening Camera...</span>";
+      camInput.click(); 
     }
 
-    // --- NAYA STEP: QR scan hone ke BAAD GPS check karna ---
-    function verifyLocationAndMark(decodedText) {
-      if (decodedText.trim() !== currentSecretQR) {
-         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; 
-         return; 
-      }
-
+    camInput.addEventListener("change", function(e) {
       let msgBox = document.getElementById("attMsg");
-      msgBox.innerHTML = "<span style='color:#0f131c;'>QR Scanned! Verifying GPS Location...</span>";
       
-      if(!navigator.geolocation) { 
-        msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; 
-        return; 
+      if(e.target.files.length == 0) {
+          msgBox.innerHTML = "<span style='color:#c0392b;'>Scan cancelled.</span>";
+          return;
       }
       
-      // Ab aaram se location mangenge
-      navigator.geolocation.getCurrentPosition(pos => {
-        let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
-        
-        if(dist <= ALLOWED_RADIUS) {
-            msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
-            
-            // Backend par entry bhejna
-            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
-              if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + "</span>";
-              else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>" + res.message + "</span>";
-            });
-            
-        } else {
-            msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Range: 15m)</span>";
-        }
-      }, err => {
-        msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak ya location turned off hai!</span>";
-      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-    }
+      let originalFile = e.target.files[0];
+      msgBox.innerHTML = "<span style='color:#0f131c;'>Optimizing Photo... Please wait.</span>";
+
+      // --- AUTO IMAGE COMPRESSOR ---
+      let reader = new FileReader();
+      reader.onload = function(event) {
+          let img = new Image();
+          img.onload = function() {
+              let canvas = document.createElement("canvas");
+              let max_size = 500; 
+              let width = img.width;
+              let height = img.height;
+              
+              if (width > height && width > max_size) {
+                  height *= max_size / width;
+                  width = max_size;
+              } else if (height > max_size) {
+                  width *= max_size / height;
+                  height = max_size;
+              }
+              
+              canvas.width = width;
+              canvas.height = height;
+              let ctx = canvas.getContext("2d");
+              ctx.drawImage(img, 0, 0, width, height);
+              
+              canvas.toBlob(function(blob) {
+                  let optimizedFile = new File([blob], "qr_optimized.jpg", { type: "image/jpeg" });
+                  
+                  // --- AB GPS CHECK KARENGE ---
+                  msgBox.innerHTML = "<span style='color:#0f131c;'>Photo Ready! Verifying GPS...</span>";
+                  if(!navigator.geolocation) { 
+                      msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; 
+                      return; 
+                  }
+                  
+                  let gpsOptions = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+                  navigator.geolocation.getCurrentPosition(pos => {
+                    let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
+                    
+                    if(dist <= ALLOWED_RADIUS) {
+                        msgBox.innerHTML = "<span style='color:#27ae60;'>Location Verified! Reading QR...</span>";
+                        
+                        document.getElementById("reader").style.display = "block";
+                        let html5QrCode = new Html5Qrcode("reader");
+                        
+                        html5QrCode.scanFile(optimizedFile, false)
+                        .then(decodedText => {
+                            document.getElementById("reader").style.display = "none";
+                            onScanSuccess(decodedText); 
+                        })
+                        .catch(err => {
+                            document.getElementById("reader").style.display = "none";
+                            msgBox.innerHTML = "<span style='color:#c0392b;'>QR Code scan nahi ho paya. Kripya QR ke ekdum paas se clear photo lein!</span>";
+                        });
+                        
+                    } else {
+                        msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Allowed Range: 15m)</span>";
+                    }
+                  }, err => {
+                    msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak ya location turned off hai. Please retry!</span>";
+                  }, gpsOptions);
+
+              }, "image/jpeg", 0.5); 
+          };
+          img.src = event.target.result;
+      };
+      reader.readAsDataURL(originalFile);
+      
+      camInput.value = ""; // Input reset
+    });
 
     function resetScannerUI() {
       document.getElementById("scanBtn").style.display = "block";
       document.getElementById("reader").style.display = "none";
-      if(html5QrCode) {
-          html5QrCode.stop().catch(err => console.log(err));
-      }
     }
 
     function onScanSuccess(decodedText) {
       if (decodedText.trim() !== currentSecretQR) {
-         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code!</span>"; return; 
+         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi Library QR scan karein.</span>";
+         return; 
       }
+
       document.getElementById("attMsg").innerHTML = "<span style='color:#0f131c;'>Marking Attendance... Please wait.</span>";
       
-      callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
-        if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + "</span>";
-        else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>" + res.message + "</span>";
-      });
+      google.script.run.withSuccessHandler(res => {
+        if(res.success) {
+           document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + "</span>";
+        } else {
+           document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>" + res.message + "</span>";
+        }
+      }).markSmartAttendance(studentData.id, studentData.name, studentData.mobile, "Verified <15m");
     }
 
     function saveAdminQRCode() {
       let text = document.getElementById("adminQrInput").value.trim();
       if(!text) { alert("Please enter QR text"); return; }
       document.getElementById("qrSaveMsg").innerHTML = "<span style='color:#0f131c;'>Saving...</span>";
-      callBackend("saveSecretQRCode", {text: text}, res => {
+      google.script.run.withSuccessHandler(res => {
         document.getElementById("qrSaveMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>";
         document.getElementById("adminQrInput").value = "";
-      });
+      }).saveSecretQRCode(text);
     }
 
     function getDistance(lat1, lon1, lat2, lon2) {
@@ -718,18 +684,18 @@ function processAdminPin() {
       let txt = document.getElementById("noticeMsg").value.trim();
       if(!txt) return;
       document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#0f131c;'>Saving...</span>";
-      callBackend("saveNotice", {txt: txt}, res => { 
+      google.script.run.withSuccessHandler(res => { 
         document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>"; 
-      });
+      }).saveNotice(txt);
     }
 
     function clearAdminNotice() {
       if(!confirm("Are you sure you want to delete all active notices?")) return;
       document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#c0392b;'>Clearing...</span>";
-      callBackend("clearAllNotices", {}, res => {
+      google.script.run.withSuccessHandler(res => {
         document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>";
         document.getElementById("noticeMsg").value = ""; 
-      });
+      }).clearAllNotices();
     }
 
     function fetchDailyAttendance() {
@@ -737,16 +703,19 @@ function processAdminPin() {
       if(!dStr) return;
       document.getElementById("attBody").innerHTML = "<tr><td colspan='5' style='text-align:center;'>Loading...</td></tr>";
       
-      callBackend("getDailyAttendance", {dStr: dStr}, list => {
+      google.script.run
+        .withSuccessHandler(list => {
           let html = ""; 
           list.forEach(r => { 
             let badge = r.type === 'IN' ? "<span style='color:#27ae60; font-weight:bold;'>IN</span>" : "<span style='color:#c0392b; font-weight:bold;'>OUT</span>";
             html += `<tr><td>${r.time}</td><td>${r.id}</td><td>${r.name}</td><td>${r.mobile}</td><td>${badge}</td></tr>`; 
           });
           document.getElementById("attBody").innerHTML = html || "<tr><td colspan='5' style='text-align:center;'>No records found</td></tr>";
-      }, err => {
-          document.getElementById("attBody").innerHTML = `<tr><td colspan='5' style='text-align:center; color:red;'>Error</td></tr>`;
-      });
+        })
+        .withFailureHandler(err => {
+          document.getElementById("attBody").innerHTML = `<tr><td colspan='5' style='text-align:center; color:red; font-weight:bold;'>Error: ${err.message}</td></tr>`;
+        })
+        .getDailyAttendance(dStr);
     }
 
     function fetchCalendar() {
@@ -758,12 +727,15 @@ function processAdminPin() {
       document.getElementById("calStats").innerHTML = "";
       document.getElementById("calDetails").innerHTML = "";
       
-      callBackend("getStudentCalendarData", {search: search, monthStr: monthStr}, res => { 
+      google.script.run
+        .withSuccessHandler(res => { 
           globalCalData = res; 
           buildCalendar(monthStr); 
-      }, err => {
-          document.getElementById("calendarDiv").innerHTML = `<div style='grid-column: span 7; text-align:center; color:red;'>Error</div>`;
-      });
+        })
+        .withFailureHandler(err => {
+          document.getElementById("calendarDiv").innerHTML = `<div style='grid-column: span 7; text-align:center; color:red; font-weight:bold;'>Error: ${err.message}</div>`;
+        })
+        .getStudentCalendarData(search, monthStr);
     }
 
     function buildCalendar(monthStr) {
@@ -803,9 +775,7 @@ function processAdminPin() {
     function setLibraryLocation() {
       document.getElementById("locSaveMsg").innerHTML = "<span style='color:#0f131c;'>Getting High Accuracy GPS...</span>";
       navigator.geolocation.getCurrentPosition(pos => {
-        callBackend("saveLibraryLocation", {lat: pos.coords.latitude, lng: pos.coords.longitude}, res => { 
-            document.getElementById("locSaveMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>"; 
-        });
+        google.script.run.withSuccessHandler(res => { document.getElementById("locSaveMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>"; }).saveLibraryLocation(pos.coords.latitude, pos.coords.longitude);
       }, err => { document.getElementById("locSaveMsg").innerHTML = "<span style='color:#c0392b;'>GPS Permission Denied!</span>"; }, {enableHighAccuracy: true});
     }
 
@@ -813,44 +783,44 @@ function processAdminPin() {
       let btn = document.getElementById("stuRefreshBtn");
       btn.innerText = "↻ Refreshing...";
       
-      // Memory se student ka ID aur Mobile nikalna
-      let savedId = localStorage.getItem("libStuId");
-      let savedMob = localStorage.getItem("libStuMob");
-      
-      if(!savedId || !savedMob) {
-          btn.innerText = "↻ Refresh";
-          return;
-      }
-
-      // Server se poora fresh data mangwana
-      callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
-          if(res.success) {
-              if(!res.active) { 
-                  show('inactiveScreen'); // Agar kisi ne block kar diya ho
-              } else {
-                  // 1. Naya data memory (offline cache) me save karna
-                  localStorage.setItem("libStuData", JSON.stringify(res));
-                  
-                  // 2. Poora Dashboard (Name, Due Date, Status aur Notices) update karna
-                  setupStudentDashboard(res);
-                  
-                  // Button ko wapas normal karna
-                  setTimeout(() => { btn.innerText = "↻ Refresh"; }, 500);
-              }
-          } else {
-              // Agar ID/Mobile server par match na ho toh logout kar do
-              logout();
-          }
-      }, err => {
-          console.error("Refresh Error: ", err);
-          btn.innerText = "↻ Refresh";
-      });
+      google.script.run
+        .withSuccessHandler(dash => {
+          try {
+            let nHtml = ""; 
+            if(dash.notices && dash.notices.length > 0) {
+              dash.notices.forEach(n => { 
+                let safeText = n.text ? n.text.toString().replace(/\n/g, '<br>') : "";
+                if(safeText) {
+                   nHtml += "<div style='margin-bottom:12px; border-bottom:1px dashed #ccc; padding-bottom:8px;'><b>["+n.date+"]</b><br>"+safeText+"</div>"; 
+                }
+              });
+            }
+            document.getElementById("noticeList").innerHTML = nHtml || "No active notices.";
+            
+            libLat = dash.lat || 0; 
+            libLng = dash.lng || 0;
+            currentSecretQR = dash.qrCode || ""; 
+            
+            btn.innerText = "↻ Refresh";
+          } catch(e) { btn.innerText = "↻ Refresh"; }
+        })
+        .withFailureHandler(err => {
+            btn.innerText = "↻ Refresh";
+            alert("Refresh Error: " + err.message);
+        })
+        .getDashboardExtras();
     }
+
     function refreshAdminData() {
       let btn = document.getElementById("adminRefreshBtn");
       btn.innerText = "↻ Refreshing...";
-      if(!document.getElementById("tabAtt").classList.contains("hidden")) { fetchDailyAttendance(); } 
-      else if(!document.getElementById("tabChart").classList.contains("hidden")) { fetchCalendar(); }
+      
+      if(!document.getElementById("tabAtt").classList.contains("hidden")) {
+         fetchDailyAttendance();
+      } else if(!document.getElementById("tabChart").classList.contains("hidden")) {
+         fetchCalendar();
+      }
+      
       setTimeout(() => { btn.innerText = "↻ Refresh"; }, 1500); 
     }
   </script>
