@@ -335,41 +335,43 @@
       });
     }
 // --- ADMIN PIN LOGIC ---
-      function showPinScreen() {
-          document.getElementById("dashboardDiv").style.display = "none";
-          document.getElementById("loginWrapper").style.display = "none";
-          document.getElementById("pinScreen").style.display = "flex";
-          document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
-          document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
-          document.getElementById("pinErrMsg").innerText = "";
-          document.getElementById("pin1").focus();
-      }
+function showPinScreen() {
+    // Sabse pehle saare screens ko hide karo
+    document.getElementById("loginScreen").classList.add("hidden");
+    document.getElementById("adminDashboard").classList.add("hidden");
+    document.getElementById("studentDashboard").classList.add("hidden");
+    document.getElementById("linkStudentScreen").classList.add("hidden");
+    
+    // PIN screen show karo
+    document.getElementById("pinScreen").style.display = "flex";
+    
+    // Input reset karo
+    document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
+    document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
+    document.getElementById("pinErrMsg").innerText = "";
+    document.getElementById("pin1").focus();
+}
 
-      function movePinFocus(curr, nextID) {
-          if(curr.value.length === 1) {
-              if(nextID === 'verify') processAdminPin();
-              else document.getElementById(nextID).focus();
-          }
-      }
-
-      function processAdminPin() {
-          let ent = document.getElementById("pin1").value + document.getElementById("pin2").value + document.getElementById("pin3").value + document.getElementById("pin4").value;
-          let savedPin = localStorage.getItem("adminPin");
-          
-          document.getElementById("pinActionBtn").innerText = "Verifying...";
-          setTimeout(() => {
-              document.getElementById("pinActionBtn").innerText = "Unlock";
-              if(ent === savedPin) {
-                  document.getElementById("pinScreen").style.display = "none";
-                  document.getElementById("dashboardDiv").style.display = "block"; // Dashboard show karega
-              } else {
-                  document.getElementById("pinErrMsg").innerText = "Incorrect PIN!";
-                  document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
-                  document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
-                  document.getElementById("pin1").focus();
-              }
-          }, 400);
-      }
+function processAdminPin() {
+    let ent = document.getElementById("pin1").value + document.getElementById("pin2").value + 
+              document.getElementById("pin3").value + document.getElementById("pin4").value;
+    let savedPin = localStorage.getItem("adminPin");
+    
+    document.getElementById("pinActionBtn").innerText = "Verifying...";
+    setTimeout(() => {
+        document.getElementById("pinActionBtn").innerText = "Unlock";
+        if(ent === savedPin) {
+            document.getElementById("pinScreen").style.display = "none";
+            // Yahan ID fix ki hai: Dashboard show karo
+            document.getElementById("adminDashboard").classList.remove("hidden");
+        } else {
+            document.getElementById("pinErrMsg").innerText = "Incorrect PIN!";
+            document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
+            document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
+            document.getElementById("pin1").focus();
+        }
+    }, 400);
+}
 
       // --- APP SENSOR (Home Button dabane par lock hona) ---
       document.addEventListener("visibilitychange", () => {
@@ -388,15 +390,18 @@
         let savedMob = localStorage.getItem("libStuMob");
         let savedData = localStorage.getItem("libStuData"); 
         
-        if(savedRole === "Admin") {
-          show('adminDashboard'); 
-          let dateInput = document.getElementById("attDate");
-          if(dateInput) dateInput.value = new Date().toISOString().split('T')[0]; 
-          let monthInput = document.getElementById("chartMonth");
-          if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
-          fetchDailyAttendance();
-          return;
-        }
+        // window.onload ke andar is part ko check karein
+if(savedRole === "Admin") {
+    // Dashboard show karne se pehle PIN screen dikhayein
+    showPinScreen(); 
+    // Data fetch wahan rehne dein, wo background mein load hota rahega
+    let dateInput = document.getElementById("attDate");
+    if(dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    let monthInput = document.getElementById("chartMonth");
+    if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
+    fetchDailyAttendance();
+    return;
+}
         
         if(savedRole === "Student" && savedId && savedMob) {
           if(savedData) { setupStudentDashboard(JSON.parse(savedData)); } 
