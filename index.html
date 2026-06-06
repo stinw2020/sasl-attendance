@@ -49,16 +49,7 @@
       margin: 0; 
       padding: 15px 10px; 
     }
-    #reader {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 999999;
-  background: black;
-  display: none; /* Default hidden */
-}
+    
     /* Card Layouts */
     .card { 
       background: white; 
@@ -660,44 +651,26 @@
 
    // --- DIRECT LIVE QR SCANNER ---
     function startScanner() {
-  let readerDiv = document.getElementById("reader");
-  readerDiv.style.display = "block";
-  document.getElementById("scanBtn").style.display = "none";
-  
-  // Close Button Create Karein
-  let closeBtn = document.createElement("button");
-  closeBtn.innerText = "CLOSE SCANNER";
-  closeBtn.style.position = "fixed";
-  closeBtn.style.bottom = "20px";
-  closeBtn.style.zIndex = "1000000";
-  closeBtn.style.background = "#c0392b";
-  closeBtn.onclick = () => resetScannerUI();
-  readerDiv.appendChild(closeBtn);
-  
-  if(!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-  
-  html5QrCode.start(
-      { facingMode: "environment" }, 
-      { fps: 10, qrbox: { width: 250, height: 250 } }, 
-      (decodedText) => {
-          resetScannerUI(); // Scanner band karein
-          verifyLocationAndMark(decodedText); 
+      let msgBox = document.getElementById("attMsg");
+      msgBox.innerHTML = "<span style='color:#0f131c;'>Starting Camera...</span>";
+      
+      document.getElementById("reader").style.display = "block";
+      document.getElementById("scanBtn").style.display = "none"; 
+      
+      if(!html5QrCode) {
+          html5QrCode = new Html5Qrcode("reader");
       }
-  ).catch(err => {
-      alert("Camera Error: " + err);
-      resetScannerUI();
-  });
-}
-
-function resetScannerUI() {
-  document.getElementById("scanBtn").style.display = "block";
-  let readerDiv = document.getElementById("reader");
-  readerDiv.style.display = "none";
-  // Close button remove karein
-  readerDiv.innerHTML = ""; 
-  
-  if(html5QrCode) html5QrCode.stop().catch(err => console.log(err));
-}
+      
+      html5QrCode.start(
+          { facingMode: "environment" }, 
+          { fps: 10, qrbox: { width: 250, height: 250 } }, 
+          (decodedText) => {
+              html5QrCode.stop().then(() => {
+                  document.getElementById("reader").style.display = "none";
+                  document.getElementById("scanBtn").style.display = "block"; 
+                  verifyLocationAndMark(decodedText); 
+              }).catch(err => console.log(err));
+          },
           (errorMessage) => { } 
       ).catch(err => {
           msgBox.innerHTML = "<span style='color:#c0392b;'>Camera Permission Denied! Kripya browser me camera allow karein.</span>";
