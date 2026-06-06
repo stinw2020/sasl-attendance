@@ -399,7 +399,7 @@ function processAdminPin() {
               }
           }
       });
-    // --- SAFE AUTO-LOGIN LOGIC ---
+   // --- SAFE AUTO-LOGIN LOGIC ---
     window.onload = function() {
       try {
         let savedRole = localStorage.getItem("libRole");
@@ -407,32 +407,36 @@ function processAdminPin() {
         let savedMob = localStorage.getItem("libStuMob");
         let savedData = localStorage.getItem("libStuData"); 
         
-        // window.onload ke andar is part ko check karein
-if(savedRole === "Admin") {
-    // Dashboard show karne se pehle PIN screen dikhayein
-    showPinScreen(); 
-    // Data fetch wahan rehne dein, wo background mein load hota rahega
-    let dateInput = document.getElementById("attDate");
-    if(dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-    let monthInput = document.getElementById("chartMonth");
-    if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
-    fetchDailyAttendance();
-    return;
-}
+        if(savedRole === "Admin") {
+            showPinScreen(); 
+            let dateInput = document.getElementById("attDate");
+            if(dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+            let monthInput = document.getElementById("chartMonth");
+            if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
+            fetchDailyAttendance();
+            return;
+        }
         
         if(savedRole === "Student" && savedId && savedMob) {
-          if(savedData) { setupStudentDashboard(JSON.parse(savedData)); } 
-          else { document.getElementById("loginScreen").classList.add("hidden"); }
+          // 1. Agar memory mein data hai, toh TURANT dashboard dikhao (No Blank Screen)
+          if(savedData) { 
+              setupStudentDashboard(JSON.parse(savedData)); 
+          } else { 
+              show('loginScreen'); // Failsafe
+          }
           
+          // 2. Background mein check karo ki student block toh nahi hua
           callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
               if(res.success) {
                 if(!res.active) { show('inactiveScreen'); }
                 else { 
                     localStorage.setItem("libStuData", JSON.stringify(res)); 
-                    if(!savedData) setupStudentDashboard(res); 
+                    setupStudentDashboard(res); // Dashboard background mein update kar do
                 }
               } else { logout(); }
-          }, err => { console.error("Server Error: ", err); show('loginScreen'); });
+          }, err => { 
+              console.error("Server Error: ", err); 
+          });
         } else {
           show('loginScreen');
         }
@@ -556,7 +560,10 @@ if(savedRole === "Admin") {
       });
     }
 
-    function setupStudentDashboard(res) {
+   function setupStudentDashboard(res) {
+      // 🚀 FIX: Turant dashboard show karo taaki blank screen na aaye!
+      show('studentDashboard');
+
       studentData = res;
       document.getElementById("dName").innerText = res.name;
       document.getElementById("dId").innerText = res.id;
@@ -578,6 +585,7 @@ if(savedRole === "Admin") {
         if(m) document.getElementById("dPhoto").src = "https://drive.google.com/thumbnail?id=" + m[0] + "&sz=w200";
       }
       
+      // Notice Board background mein load hota rahega
       callBackend("getDashboardExtras", {}, dash => {
           try {
             if (!dash) dash = { lat: 0, lng: 0, qrCode: "", notices: [] };
@@ -593,10 +601,9 @@ if(savedRole === "Admin") {
               });
             }
             document.getElementById("noticeList").innerHTML = nHtml || "No active notices.";
-            show('studentDashboard');
           } catch(e) { }
       });
-    } 
+    }
 
     // --- DIRECT LIVE QR SCANNER (iOS FIX) ---
     function startScanner() {
