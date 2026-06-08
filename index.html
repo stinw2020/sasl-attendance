@@ -315,7 +315,6 @@
     <div class="tabs">
       <div class="tab active" onclick="switchTab('tabNotice', this)">Notices</div>
       <div class="tab" onclick="switchTab('tabAtt', this)">Daily Att.</div>
-      <div class="tab" onclick="switchTab('tabManual', this)">Manual Att.</div>
       <div class="tab" onclick="switchTab('tabChart', this)">Calendar</div>
       <div class="tab" onclick="switchTab('tabLoc', this)">Location</div>
     </div>
@@ -343,17 +342,7 @@
         </table>
       </div>
     </div>
-    
-<div id="tabManual" class="hidden">
-      <h3 style="margin-top:0; color:#2c3e50;">Mark Manual Attendance</h3>
-      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Agar student ID card laana bhool gaya hai, toh yahan ID ya Mobile number daal kar IN/OUT mark karein.</p>
-      
-      <input type="text" id="manualAttInput" placeholder="Enter Student ID or Mobile No.">
-      <button onclick="markAdminManualAttendance()" class="btn-green">Mark Attendance</button>
-      
-      <div id="manualAttMsg" style="font-weight:bold; margin-top:15px; font-size:15px; text-align:center;"></div>
-    </div>
-    
+
     <div id="tabChart" class="hidden">
       <h3 style="margin-top:0;">Student Calendar</h3>
       <input type="text" id="chartSearch" placeholder="Enter Student ID or Mobile">
@@ -367,7 +356,7 @@
 
     <div id="tabLoc" class="hidden">
       <h3>Set Library Geofence</h3>
-      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 20 meters of this exact point to scan.</p> 
+      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 15 meters of this exact point to scan.</p> 
       <button class="btn-green" style="padding:16px;" onclick="setLibraryLocation()">Lock Current Location</button>
       <div id="locSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
       
@@ -382,11 +371,10 @@
   </div>
   
   <script>
-    
     // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
     const API_URL = "https://script.google.com/macros/s/AKfycbx4kbfaVHrqFsSO5v41RNcZPP0arAbM_oLxW0t5HiggjODp8XCjjpPkPGyHNK_FjTNy/exec";
 
-    const ALLOWED_RADIUS = 20;
+    const ALLOWED_RADIUS = 15;
     let studentData = null;
     let libLat = 0, libLng = 0;
     let currentSecretQR = "";
@@ -728,21 +716,14 @@ function resetScannerUI() {
   if(html5QrCode) html5QrCode.stop().catch(err => console.log(err));
 }
 
-    // 🚀 GPS ACCURACY OPTIMIZATION SYSTEM (Auto-Retry & Hardware Warm-up)
-    function verifyLocationAndMark(decodedText, retryCount = 0) {
+    function verifyLocationAndMark(decodedText) {
       if (decodedText.trim() !== currentSecretQR) {
          document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; 
          return; 
       }
 
       let msgBox = document.getElementById("attMsg");
-      
-      // Attempt status dikhane ke liye
-      if (retryCount === 0) {
-        msgBox.innerHTML = "<span style='color:#0f131c;'>QR Scanned! Optimizing GPS Accuracy... 🛰️</span>";
-      } else {
-        msgBox.innerHTML = "<span style='color:#3498db;'>Fixing GPS Drift (Attempt " + (retryCount + 1) + "/3)... ⏳</span>";
-      }
+      msgBox.innerHTML = "<span style='color:#0f131c;'>QR Scanned! Verifying GPS Location...</span>";
       
       if(!navigator.geolocation) { 
         msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; 
@@ -751,37 +732,19 @@ function resetScannerUI() {
       
       navigator.geolocation.getCurrentPosition(pos => {
         let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
-        let gpsAccuracy = pos.coords.accuracy; // Phone kitna sure hai meters me
-
-        // ⭐ LOGIC: ALLOWED_RADIUS use kar raha hai
+        
         if(dist <= ALLOWED_RADIUS) {
             msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
-            // 🎯 TEXT: Yahan 15m fix kar diya hai
-            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <20m"}, res => {
-              if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
-              else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Error: " + res.message + "</span>";
+            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
+              if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + "</span>";
+              else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>" + res.message + "</span>";
             });
-        } 
-        // 🎯 RETRY LOGIC: Agar pehle snapshot me door aaya, toh GPS ko stable hone ke liye 1.2 second wait
-        else if (retryCount < 3) {
-            setTimeout(() => {
-                verifyLocationAndMark(decodedText, retryCount + 1);
-            }, 1200);
-        } 
-        // 🎯 ERROR MESSAGE: Yahan bhi Allowed: 15m fix kar diya hai
-        else {
-            msgBox.innerHTML = "<span style='color:#c0392b;'>Range Error: Aap library se " + Math.round(dist) + " meter door hain! (Allowed: 5m). Kripya thoda khule me ya gate ke paas khade ho kar scan karein.</span>";
+        } else {
+            msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Range: 15m)</span>";
         }
       }, err => {
-        // Signal fail hone par background retry
-        if (retryCount < 3) {
-            setTimeout(() => {
-                verifyLocationAndMark(decodedText, retryCount + 1);
-            }, 1200);
-        } else {
-            msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak hai ya location turned off hai!</span>";
-        }
-      }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }); 
+        msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak ya location turned off hai!</span>";
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
 
     function resetScannerUI() {
@@ -960,32 +923,6 @@ function resetScannerUI() {
           }, 2000);
       });
     }
-// ==========================================
-    // ADMIN MANUAL ATTENDANCE FUNCTION
-    // ==========================================
-    function markAdminManualAttendance() {
-      let val = document.getElementById("manualAttInput").value.trim();
-      if(!val) { alert("Please enter Student ID or Mobile Number!"); return; }
-      
-      let msgBox = document.getElementById("manualAttMsg");
-      msgBox.innerHTML = "<span style='color:#0f131c;'>Verifying & Marking Attendance... ⏳</span>";
-      
-      callBackend("adminMarkAttendance", {searchValue: val}, res => {
-        if(res.success) {
-          msgBox.innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
-          document.getElementById("manualAttInput").value = "";
-          
-          // Background me daily attendance tab wala data refresh karlo
-          let dateInput = document.getElementById("attDate");
-          if(dateInput && dateInput.value === new Date().toISOString().split('T')[0]) {
-             fetchDailyAttendance();
-          }
-        } else {
-          msgBox.innerHTML = "<span style='color:#c0392b;'>" + res.message + " ❌</span>";
-        }
-      });
-    }
-    
   </script>
 </body>
 </html>
