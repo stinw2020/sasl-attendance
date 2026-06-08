@@ -823,21 +823,7 @@
             }
         });
     }
-    function adminChangeCred() {
-        let role = document.getElementById("targetRole").value;
-        let oldU = document.getElementById("targetOldUser").value.trim();
-        let newU = document.getElementById("targetNewUser").value.trim();
-        let newP = document.getElementById("targetNewPass").value.trim();
-        let msg = document.getElementById("adminCredMsg");
-
-        if(!oldU || !newU || !newP) { alert("Sari details bharein!"); return; }
-
-        msg.innerHTML = "Updating... ⏳";
-        callBackend("changeCredentials", {role: role, oldUser: oldU, newUser: newU, newPass: newP}, res => {
-            msg.innerHTML = res.success ? "<span style='color:green;'>"+res.message+"</span>" : "<span style='color:red;'>"+res.message+"</span>";
-        });
-    }
-
+    
   </script>
 </body>
 </html>
