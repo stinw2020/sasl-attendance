@@ -535,34 +535,35 @@
       });
     } 
 
-    function startScanner() {
-  let readerDiv = document.getElementById("reader");
-  readerDiv.style.display = "flex";
-  
-  // PURANE BUTTONS SAAMNE NA AAYEN, ISLIYE EK SAFI DIV
-  readerDiv.innerHTML = '<div id="qr-scanner-content"></div>';
-  let contentDiv = document.getElementById("qr-scanner-content");
-  
-  let closeBtn = document.createElement("button");
-  closeBtn.innerText = "✕ CLOSE";
-  closeBtn.className = "close-scanner-btn";
-  closeBtn.onclick = () => resetScannerUI();
-  readerDiv.appendChild(closeBtn);
-  
-  if(!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-  
-  html5QrCode.start(
-      { facingMode: "environment" }, 
-      { fps: 10, qrbox: { width: 250, height: 250 } }, 
-      (decodedText) => {
+   function startScanner() {
+      let readerDiv = document.getElementById("reader");
+      readerDiv.style.display = "block"; // Flex ki jagah block taaki full screen le
+      
+      // PURANE BUTTONS SAAMNE NA AAYEN, ISLIYE EK SAFI DIV
+      // 🚀 FIX: Is div ko height/width 100% de di taaki camera fail sake
+      readerDiv.innerHTML = '<div id="qr-scanner-content" style="width: 100%; height: 100%;"></div>';
+      
+      let closeBtn = document.createElement("button");
+      closeBtn.innerText = "✕ CLOSE";
+      closeBtn.className = "close-scanner-btn";
+      closeBtn.onclick = () => resetScannerUI();
+      readerDiv.appendChild(closeBtn);
+      
+      // 🚀 FIX: "reader" ki jagah "qr-scanner-content" likhna hai
+      if(!html5QrCode) html5QrCode = new Html5Qrcode("qr-scanner-content");
+      
+      html5QrCode.start(
+          { facingMode: "environment" }, 
+          { fps: 10, qrbox: { width: 250, height: 250 } }, 
+          (decodedText) => {
+              resetScannerUI();
+              verifyLocationAndMark(decodedText); 
+          }
+      ).catch(err => {
+          alert("Camera Permission Denied!");
           resetScannerUI();
-          verifyLocationAndMark(decodedText); 
-      }
-  ).catch(err => {
-      alert("Camera Permission Denied!");
-      resetScannerUI();
-  });
-}
+      });
+    }
 
    function resetScannerUI() {
       let readerDiv = document.getElementById("reader");
