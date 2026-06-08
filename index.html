@@ -216,11 +216,6 @@
     <hr>
     <h3 style="margin-bottom:10px; font-size:18px;">Notice Board</h3>
     <div id="noticeList" style="background:#fff3cd; padding:15px; border-radius:8px; font-size:14px; color:#856404; line-height:1.6;"></div>
-    
-    <hr>
-    <h3 style="margin-bottom:10px; font-size:18px;">Account Security</h3>
-    <button onclick="openCredModal()" style="padding:12px; font-size:14px; background:#34495e;">⚙️ Change Login ID / Password</button>
-  </div>
 
   <div id="adminDashboard" class="card admin-card hidden">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -292,11 +287,18 @@
     </div>
 
     <div id="tabSec" class="hidden">
-       <h3 style="margin-top:0; color:#2c3e50;">Account Security</h3>
-       <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Apna Admin Username aur Password change karne ke liye niche button par click karein.</p>
-       <button onclick="openCredModal()" class="btn-green" style="padding:16px;">⚙️ Change Admin ID / Password</button>
+       <h3 style="margin-top:0; color:#2c3e50;">Manage User Credentials</h3>
+       <label>Select Role:</label>
+       <select id="targetRole">
+         <option value="Student">Student</option>
+         <option value="Admin">Admin</option>
+       </select>
+       <input type="text" id="targetOldUser" placeholder="Current Username">
+       <input type="text" id="targetNewUser" placeholder="New Username">
+       <input type="text" id="targetNewPass" placeholder="New Password">
+       <button onclick="adminChangeCred()" class="btn-green">Update User/Admin</button>
+       <div id="adminCredMsg" style="margin-top:10px; font-weight:bold; text-align:center;"></div>
     </div>
-  </div>
   
   <script>
     // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
@@ -819,6 +821,20 @@
             } else {
                 msgBox.innerHTML = "<span style='color:#c0392b;'>" + res.message + " ❌</span>";
             }
+        });
+    }
+    function adminChangeCred() {
+        let role = document.getElementById("targetRole").value;
+        let oldU = document.getElementById("targetOldUser").value.trim();
+        let newU = document.getElementById("targetNewUser").value.trim();
+        let newP = document.getElementById("targetNewPass").value.trim();
+        let msg = document.getElementById("adminCredMsg");
+
+        if(!oldU || !newU || !newP) { alert("Sari details bharein!"); return; }
+
+        msg.innerHTML = "Updating... ⏳";
+        callBackend("changeCredentials", {role: role, oldUser: oldU, newUser: newU, newPass: newP}, res => {
+            msg.innerHTML = res.success ? "<span style='color:green;'>"+res.message+"</span>" : "<span style='color:red;'>"+res.message+"</span>";
         });
     }
 
