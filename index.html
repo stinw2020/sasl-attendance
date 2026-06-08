@@ -367,7 +367,7 @@
 
     <div id="tabLoc" class="hidden">
       <h3>Set Library Geofence</h3>
-      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 20 meters of this exact point to scan.</p> 
+      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 15 meters of this exact point to scan.</p> 
       <button class="btn-green" style="padding:16px;" onclick="setLibraryLocation()">Lock Current Location</button>
       <div id="locSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
       
@@ -386,7 +386,7 @@
     // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
     const API_URL = "https://script.google.com/macros/s/AKfycbx4kbfaVHrqFsSO5v41RNcZPP0arAbM_oLxW0t5HiggjODp8XCjjpPkPGyHNK_FjTNy/exec";
 
-    const ALLOWED_RADIUS = 20;
+    const ALLOWED_RADIUS = 15;
     let studentData = null;
     let libLat = 0, libLng = 0;
     let currentSecretQR = "";
@@ -728,14 +728,21 @@ function resetScannerUI() {
   if(html5QrCode) html5QrCode.stop().catch(err => console.log(err));
 }
 
-    function verifyLocationAndMark(decodedText) {
+    // 🚀 GPS ACCURACY OPTIMIZATION SYSTEM (Auto-Retry & Hardware Warm-up)
+    function verifyLocationAndMark(decodedText, retryCount = 0) {
       if (decodedText.trim() !== currentSecretQR) {
          document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; 
          return; 
       }
 
       let msgBox = document.getElementById("attMsg");
-      msgBox.innerHTML = "<span style='color:#0f131c;'>QR Scanned! Verifying GPS Location...</span>";
+      
+      // Attempt status dikhane ke liye
+      if (retryCount === 0) {
+        msgBox.innerHTML = "<span style='color:#0f131c;'>QR Scanned! Optimizing GPS Accuracy... 🛰️</span>";
+      } else {
+        msgBox.innerHTML = "<span style='color:#3498db;'>Fixing GPS Drift (Attempt " + (retryCount + 1) + "/3)... ⏳</span>";
+      }
       
       if(!navigator.geolocation) { 
         msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; 
@@ -744,19 +751,37 @@ function resetScannerUI() {
       
       navigator.geolocation.getCurrentPosition(pos => {
         let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
-        
+        let gpsAccuracy = pos.coords.accuracy; // Phone kitna sure hai meters me
+
+        // ⭐ LOGIC: ALLOWED_RADIUS use kar raha hai
         if(dist <= ALLOWED_RADIUS) {
             msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
-            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <20m"}, res => {
-              if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + "</span>";
-              else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>" + res.message + "</span>";
+            // 🎯 TEXT: Yahan 15m fix kar diya hai
+            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
+              if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
+              else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Error: " + res.message + "</span>";
             });
-        } else {
-            msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Range: 20m)</span>";
+        } 
+        // 🎯 RETRY LOGIC: Agar pehle snapshot me door aaya, toh GPS ko stable hone ke liye 1.2 second wait
+        else if (retryCount < 3) {
+            setTimeout(() => {
+                verifyLocationAndMark(decodedText, retryCount + 1);
+            }, 1200);
+        } 
+        // 🎯 ERROR MESSAGE: Yahan bhi Allowed: 15m fix kar diya hai
+        else {
+            msgBox.innerHTML = "<span style='color:#c0392b;'>Range Error: Aap library se " + Math.round(dist) + " meter door hain! (Allowed: 5m). Kripya thoda khule me ya gate ke paas khade ho kar scan karein.</span>";
         }
       }, err => {
-        msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak ya location turned off hai!</span>";
-      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        // Signal fail hone par background retry
+        if (retryCount < 3) {
+            setTimeout(() => {
+                verifyLocationAndMark(decodedText, retryCount + 1);
+            }, 1200);
+        } else {
+            msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak hai ya location turned off hai!</span>";
+        }
+      }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }); 
     }
 
     function resetScannerUI() {
