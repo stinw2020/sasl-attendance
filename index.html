@@ -525,14 +525,12 @@
       });
     } 
 
+    // --- DIRECT LIVE QR SCANNER ---
     function startScanner() {
   let readerDiv = document.getElementById("reader");
   readerDiv.style.display = "flex";
   
-  // PURANE BUTTONS SAAMNE NA AAYEN, ISLIYE EK SAFI DIV
-  readerDiv.innerHTML = '<div id="qr-scanner-content"></div>';
-  let contentDiv = document.getElementById("qr-scanner-content");
-  
+  // Close Button Create Karein
   let closeBtn = document.createElement("button");
   closeBtn.innerText = "✕ CLOSE";
   closeBtn.className = "close-scanner-btn";
@@ -554,14 +552,14 @@
   });
 }
 
-    function resetScannerUI() {
+function resetScannerUI() {
   let readerDiv = document.getElementById("reader");
+  readerDiv.style.display = "none";
+  readerDiv.innerHTML = ""; // Button remove karne ke liye
   
-  // Scanner stop karo
-  if(html5QrCode) {
-      html5QrCode.stop().catch(err => console.log(err));
-      html5QrCode = null; // Object reset karo
-  }
+  if(html5QrCode) html5QrCode.stop().catch(err => console.log(err));
+}
+
   
   // HTML se sab kuch uda do
   readerDiv.style.display = "none";
