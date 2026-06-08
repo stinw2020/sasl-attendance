@@ -1,864 +1,932 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0f131c">
-  
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="SASL App">
-  <link rel="apple-touch-icon" href="https://i.postimg.cc/Jhb1ch14/sasl-logo.jpg">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0f131c">
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SASL App">
+  <link rel="apple-touch-icon" href="https://i.postimg.cc/Jhb1ch14/sasl-logo.jpg">
 
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const manifest = {
-        "name": "SASL Attendance Portal",
-        "short_name": "SASL App",
-        "display": "standalone",
-        "background_color": "#f0f2f5",
-        "theme_color": "#0f131c",
-        "icons": [{
-          "src": "https://i.postimg.cc/Jhb1ch14/sasl-logo.jpg",
-          "sizes": "512x512",
-          "type": "image/png"
-        }]
-      };
-      const stringManifest = JSON.stringify(manifest);
-      const blob = new Blob([stringManifest], {type: 'application/json'});
-      const manifestURL = URL.createObjectURL(blob);
-      const link = document.createElement('link');
-      link.rel = 'manifest';
-      link.href = manifestURL;
-      document.head.appendChild(link);
-    });
-  </script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SASL Attendance Portal</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    /* Scanner Full Screen Overlay */
-    #reader { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 9999999 !important; background-color: black !important; display: none; }
-/* Scanner ka Camera view */
-    #reader video {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover !important;
-    }
-    
-    /* 🚀 FIX: Default Video Play/Pause Icon ko Hide Karna */
-    #reader video::-webkit-media-controls { display: none !important; }
-    #reader video::-webkit-media-controls-play-button { display: none !important; }
-    #reader video::-webkit-media-controls-start-playback-button { display: none !important; }
-    .close-scanner-btn { position: fixed; top: 20px; right: 20px; z-index: 99999999; background: rgba(255, 0, 0, 0.8); color: white; border: none; padding: 15px 25px; border-radius: 50px; font-weight: bold; }
-    
-    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: #f0f2f5; margin: 0; padding: 15px 10px; }
-    
-    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 400px; margin: 10px auto; }
-    #loginScreen, #linkStudentScreen { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 95%; margin: 0; }
-    .admin-card { max-width: 900px; }
-    
-    input, select, textarea { width: 100%; padding: 12px; margin: 8px 0 15px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; outline: none; }
-    input:focus, select:focus, textarea:focus { border-color: #0f131c; }
-    
-    button { width: 100%; padding: 14px; border: none; border-radius: 8px; background: #0f131c; color: white; font-weight: bold; cursor: pointer; margin-top: 5px; font-size: 16px; transition: 0.2s; }
-    button:active { transform: scale(0.98); } 
-    .btn-green { background: #27ae60; } 
-    .btn-red { background: #c0392b; }
-    
-    .hidden { display: none !important; }
-    .photo { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid #0f131c; display: block; margin: 0 auto 15px auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    
-    .tabs { display: flex; overflow-x: auto; margin-bottom: 20px; border-bottom: 2px solid #ddd; -webkit-overflow-scrolling: touch; }
-    .tab { padding: 12px 15px; cursor: pointer; margin-right: 5px; white-space: nowrap; font-weight: bold; color: #7f8c8d; border-bottom: 3px solid transparent; }
-    .tab.active { color: #0f131c; border-bottom: 3px solid #0f131c; }
-    
-    .table-responsive { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; min-width: 400px; }
-    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-    th { background: #0f131c; color: white; white-space: nowrap;}
-    
-    #inactiveScreen { text-align:center; padding:50px 20px; color:white; background:#c0392b; border-radius:12px; max-width:400px; margin:50px auto; }
-    
-    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
-    .day { padding: 10px 5px; text-align: center; border-radius: 6px; background: #eee; font-weight: bold; cursor: pointer; font-size: 14px; }
-    .present { background: #2ecc71; color: white; box-shadow: 0 2px 4px rgba(46,204,113,0.3);}
-    .absent { background: #e74c3c; color: white; box-shadow: 0 2px 4px rgba(231,76,60,0.3);}
-    
-    h2, h3 { color: #2c3e50; }
-    hr { border: 0; height: 1px; background: #eee; margin: 15px 0; }
-  </style>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const manifest = {
+        "name": "SASL Attendance Portal",
+        "short_name": "SASL App",
+        "display": "standalone",
+        "background_color": "#f0f2f5",
+        "theme_color": "#0f131c",
+        "icons": [{
+          "src": "https://i.postimg.cc/Jhb1ch14/sasl-logo.jpg",
+          "sizes": "512x512",
+          "type": "image/png"
+        }]
+      };
+      const stringManifest = JSON.stringify(manifest);
+      const blob = new Blob([stringManifest], {type: 'application/json'});
+      const manifestURL = URL.createObjectURL(blob);
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = manifestURL;
+      document.head.appendChild(link);
+    });
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SASL Attendance Portal</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    /* Scanner Full Screen Overlay */
+    #reader {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 9999999 !important;
+      background-color: black !important;
+      display: none;
+    }
+
+    /* Scanner ka Camera view */
+    #reader video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+    }
+
+    /* Default Video Play/Pause Icon ko Hide Karna */
+    #reader video::-webkit-media-controls { display: none !important; }
+    #reader video::-webkit-media-controls-play-button { display: none !important; }
+    #reader video::-webkit-media-controls-start-playback-button { display: none !important; }
+
+    /* =========================================
+       MOBILE RESPONSIVE CSS (APP UI)
+       ========================================= */
+    * { 
+      box-sizing: border-box; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body { 
+      background: #f0f2f5; 
+      margin: 0; 
+      padding: 15px 10px; 
+    }
+    
+    .card { 
+      background: white; 
+      padding: 20px; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+      width: 100%; 
+      max-width: 400px; 
+      margin: 10px auto; 
+    }
+
+    #loginScreen, #linkStudentScreen {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 95%;
+      margin: 0;
+    }
+    .admin-card { max-width: 900px; }
+    
+    input, select, textarea { 
+      width: 100%; padding: 12px; margin: 8px 0 15px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #0f131c; }
+    
+    button { 
+      width: 100%; padding: 14px; border: none; border-radius: 8px; background: #0f131c; color: white; font-weight: bold; cursor: pointer; margin-top: 5px; font-size: 16px; transition: 0.2s;
+    }
+    button:active { transform: scale(0.98); } 
+    .btn-green { background: #27ae60; } 
+    .btn-red { background: #c0392b; }
+    
+    .hidden { display: none !important; }
+    .photo { 
+      width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid #0f131c; display: block; margin: 0 auto 15px auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .tabs { 
+      display: flex; overflow-x: auto; margin-bottom: 20px; border-bottom: 2px solid #ddd; -webkit-overflow-scrolling: touch; 
+    }
+    .tab { 
+      padding: 12px 15px; cursor: pointer; margin-right: 5px; white-space: nowrap; font-weight: bold; color: #7f8c8d; border-bottom: 3px solid transparent;
+    }
+    .tab.active { color: #0f131c; border-bottom: 3px solid #0f131c; }
+    
+    .table-responsive { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; min-width: 400px; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background: #0f131c; color: white; white-space: nowrap;}
+    
+    #inactiveScreen { text-align:center; padding:50px 20px; color:white; background:#c0392b; border-radius:12px; max-width:400px; margin:50px auto; }
+    
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
+    .day { padding: 10px 5px; text-align: center; border-radius: 6px; background: #eee; font-weight: bold; cursor: pointer; font-size: 14px; }
+    .present { background: #2ecc71; color: white; box-shadow: 0 2px 4px rgba(46,204,113,0.3);}
+    .absent { background: #e74c3c; color: white; box-shadow: 0 2px 4px rgba(231,76,60,0.3);}
+    
+    h2, h3 { color: #2c3e50; }
+    hr { border: 0; height: 1px; background: #eee; margin: 15px 0; }
+  </style>
 </head>
 <body>
 
-  <div id="pinScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f131c; color: white; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; padding: 20px;">
-    <h2 style="margin-bottom:10px;">Admin Security PIN</h2>
-    <p style="color:#7f8c8d; margin-bottom:20px;">Enter PIN to unlock dashboard</p>
-    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-      <input type="password" id="pin1" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin2')">
-      <input type="password" id="pin2" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin3')">
-      <input type="password" id="pin3" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin4')">
-      <input type="password" id="pin4" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'verify')">
-    </div>
-    <button onclick="processAdminPin()" id="pinActionBtn" style="padding:12px 30px; background:#3498db; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">Unlock</button>
-    <div id="pinErrMsg" style="color:#e74c3c; margin-top:15px; font-weight:bold;"></div>
-  </div>
+  <div id="pinScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f131c; color: white; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; padding: 20px;">
+    <h2 style="margin-bottom:10px;">Admin Security PIN</h2>
+    <p style="color:#7f8c8d; margin-bottom:20px;">Enter PIN to unlock dashboard</p>
+    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+      <input type="password" id="pin1" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin2')">
+      <input type="password" id="pin2" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin3')">
+      <input type="password" id="pin3" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'pin4')">
+      <input type="password" id="pin4" maxlength="1" style="width:50px; height:50px; font-size:24px; text-align:center; border-radius:8px; border:2px solid #3498db; background:#1a252f; color:white; outline:none;" oninput="movePinFocus(this, 'verify')">
+    </div>
+    <button onclick="processAdminPin()" id="pinActionBtn" style="padding:12px 30px; background:#3498db; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">Unlock</button>
+    <div id="pinErrMsg" style="color:#e74c3c; margin-top:15px; font-weight:bold;"></div>
+  </div>
 
-  <div id="offlineScreen" class="hidden" style="text-align:center; padding:50px 20px; background:#f0f2f5; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:999999; position:fixed; top:0; left:0; width:100%;">
-    <div style="font-size:60px; margin-bottom:10px;">📶</div>
-    <h1 style="color:#c0392b; margin-bottom:10px;">No Internet Connection</h1>
-    <p style="color:#7f8c8d; margin-bottom:25px; font-size:16px;">App chalane ke liye net connection zaroori hai. Kripya apna mobile data ya Wi-Fi on karein.</p>
-    <button id="reloadBtn" onclick="retryConnection()" style="width:auto; padding:14px 40px; background:#0f131c; border-radius:30px;">↻ Reload</button>
-  </div>
+  <div id="offlineScreen" class="hidden" style="text-align:center; padding:50px 20px; background:#f0f2f5; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:999999; position:fixed; top:0; left:0; width:100%;">
+    <div style="font-size:60px; margin-bottom:10px;">📶</div>
+    <h1 style="color:#c0392b; margin-bottom:10px;">No Internet Connection</h1>
+    <p style="color:#7f8c8d; margin-bottom:25px; font-size:16px;">App chalane ke liye net connection zaroori hai. Kripya apna mobile data ya Wi-Fi on karein.</p>
+    <button id="reloadBtn" onclick="retryConnection()" style="width:auto; padding:14px 40px; background:#0f131c; border-radius:30px;">↻ Reload</button>
+  </div>
 
-  <div id="loginScreen" class="card hidden">
-    <h2 style="text-align:center; color:#0f131c; margin-top:0;">SASL Attendance Portal</h2>
-    <p style="text-align:center; color:#7f8c8d; font-size:14px; margin-top:-10px;">Login to your account</p>
-    
-    <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Select Role</label>
-    <select id="roleSelect" onchange="toggleLoginFields()">
-      <option value="Student">Student</option>
-      <option value="Admin">Admin</option>
-    </select>
-    
-    <div id="studentLoginFields">
-      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Username</label>
-      <input type="text" id="loginUser" placeholder="Enter Username">
-      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Password</label>
-      <input type="password" id="loginPass" placeholder="Enter Password">
-    </div>
-    
-    <div id="adminLoginFields" class="hidden">
-      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Admin Username</label>
-      <input type="text" id="adminUser" placeholder="Admin Username">
-      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Admin Password</label>
-      <input type="password" id="adminPass" placeholder="Admin Password">
-    </div>
+  <div id="loginScreen" class="card hidden">
+    <h2 style="text-align:center; color:#0f131c; margin-top:0;">SASL Attendance Portal</h2>
+    <p style="text-align:center; color:#7f8c8d; font-size:14px; margin-top:-10px;">Login to your account</p>
+    
+    <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Select Role</label>
+    <select id="roleSelect" onchange="toggleLoginFields()">
+      <option value="Student">Student</option>
+      <option value="Admin">Admin</option>
+    </select>
+    
+    <div id="studentLoginFields">
+      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Username</label>
+      <input type="text" id="loginUser" placeholder="Enter Username">
+      
+      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Password</label>
+      <input type="password" id="loginPass" placeholder="Enter Password">
+    </div>
+    
+    <div id="adminLoginFields" class="hidden">
+      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Admin Username</label>
+      <input type="text" id="adminUser" placeholder="Admin Username">
+      
+      <label style="font-size:14px; font-weight:bold; color:#34495e; display:block; text-align:left;">Admin Password</label>
+      <input type="password" id="adminPass" placeholder="Admin Password">
+    </div>
 
-    <button onclick="processLogin()">Secure Login</button>
-    <div id="loginMsg" style="color:red; text-align:center; margin-top:15px; font-weight:bold; font-size:14px;"></div>
-  </div>
+    <button onclick="processLogin()">Secure Login</button>
+    <div id="loginMsg" style="color:red; text-align:center; margin-top:15px; font-weight:bold; font-size:14px;"></div>
+  </div>
 
-  <div id="linkStudentScreen" class="card hidden">
-    <h2 style="text-align:center; color:#27ae60; margin-top:0;">Link Profile</h2>
-    <p style="text-align:center; font-size:14px; color:#7f8c8d; line-height:1.5;">Please enter your LMS Student ID and Mobile Number to load your dashboard.</p>
-    <input type="text" id="stuIdInput" placeholder="Enter Student ID (e.g. ST001)">
-    <input type="number" id="stuMobInput" placeholder="Enter Mobile No">
-    <button onclick="linkStudentDetails()" class="btn-green">Load Dashboard</button>
-    <div id="linkMsg" style="color:red; text-align:center; margin-top:15px; font-weight:bold; font-size:14px;"></div>
-  </div>
+  <div id="linkStudentScreen" class="card hidden">
+    <h2 style="text-align:center; color:#27ae60; margin-top:0;">Link Profile</h2>
+    <p style="text-align:center; font-size:14px; color:#7f8c8d; line-height:1.5;">Please enter your LMS Student ID and Mobile Number to load your dashboard.</p>
+    
+    <input type="text" id="stuIdInput" placeholder="Enter Student ID (e.g. ST001)">
+    <input type="number" id="stuMobInput" placeholder="Enter Mobile No">
+    <button onclick="linkStudentDetails()" class="btn-green">Load Dashboard</button>
+    <div id="linkMsg" style="color:red; text-align:center; margin-top:15px; font-weight:bold; font-size:14px;"></div>
+  </div>
 
-  <div id="inactiveScreen" class="hidden">
-    <h1 style="margin-top:0; font-size:32px;">INACTIVE</h1>
-    <p style="font-size:16px; line-height:1.5;">Aapka account block ya inactive kar diya gaya hai. Kripya management se sampark karein.</p>
-    <button onclick="logout()" style="background:white; color:#c0392b; margin-top:25px; border-radius:30px;">Go Back</button>
-  </div>
+  <div id="inactiveScreen" class="hidden">
+    <h1 style="margin-top:0; font-size:32px;">INACTIVE</h1>
+    <p style="font-size:16px; line-height:1.5;">Aapka account block ya inactive kar diya gaya hai. Kripya management se sampark karein.</p>
+    <button onclick="logout()" style="background:white; color:#c0392b; margin-top:25px; border-radius:30px;">Go Back</button>
+  </div>
 
-  <div id="studentDashboard" class="card hidden">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-      <h3 style="margin:0; color:#0f131c;">My Dashboard</h3>
-      <button id="stuRefreshBtn" onclick="refreshStudentData()" style="width:auto; padding:6px 12px; font-size:12px; margin:0; background:#34495e; border-radius:20px;">↻ Refresh</button>
-    </div>
-    
-    <img id="dPhoto" src="https://via.placeholder.com/100" class="photo">
-    <h2 id="dName" style="text-align:center; margin:5px 0;"></h2>
-    <p id="dId" style="text-align:center; color:#7f8c8d; margin:0; font-weight:bold; font-size:15px;"></p>
-    <p id="dMob" style="text-align:center; color:#7f8c8d; margin:0; font-size:13px;"></p>
-    
-    <div style="background:#f8f9fa; border-radius:8px; padding:15px; margin-top:20px;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-        <span style="color:#7f8c8d; font-size:14px;">Reg. Date:</span>
-        <span id="dJoin" style="font-weight:bold; font-size:14px;"></span>
-      </div>
-      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-        <span style="color:#7f8c8d; font-size:14px;">Due Date:</span>
-        <span id="dDue" style="color:#c0392b; font-weight:bold; font-size:14px;"></span>
-      </div>
-      <div style="display:flex; justify-content:space-between;">
-        <span style="color:#7f8c8d; font-size:14px;">Status:</span>
-        <span id="dDueDays" style="font-weight:bold; font-size:14px;"></span>
-      </div>
-    </div>
+  <div id="studentDashboard" class="card hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+      <h3 style="margin:0; color:#0f131c;">My Dashboard</h3>
+      <button id="stuRefreshBtn" onclick="refreshStudentData()" style="width:auto; padding:6px 12px; font-size:12px; margin:0; background:#34495e; border-radius:20px;">↻ Refresh</button>
+    </div>
+    
+    <img id="dPhoto" src="https://via.placeholder.com/100" class="photo">
+    <h2 id="dName" style="text-align:center; margin:5px 0;"></h2>
+    <p id="dId" style="text-align:center; color:#7f8c8d; margin:0; font-weight:bold; font-size:15px;"></p>
+    <p id="dMob" style="text-align:center; color:#7f8c8d; margin:0; font-size:13px;"></p>
+    
+    <div style="background:#f8f9fa; border-radius:8px; padding:15px; margin-top:20px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="color:#7f8c8d; font-size:14px;">Reg. Date:</span>
+        <span id="dJoin" style="font-weight:bold; font-size:14px;"></span>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="color:#7f8c8d; font-size:14px;">Due Date:</span>
+        <span id="dDue" style="color:#c0392b; font-weight:bold; font-size:14px;"></span>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <span style="color:#7f8c8d; font-size:14px;">Status:</span>
+        <span id="dDueDays" style="font-weight:bold; font-size:14px;"></span>
+      </div>
+    </div>
 
-    <hr>
-    <h3 style="text-align:center; margin-bottom:10px; font-size:18px;">Smart Attendance</h3>
-    <div id="attMsg" style="text-align:center; font-weight:bold; margin-bottom:10px; font-size:14px;"></div>
-    
-    <div id="reader" style="display:none; margin-bottom:15px; border-radius:8px; overflow:hidden;"></div>
-    <button id="scanBtn" class="btn-green" style="padding:16px; font-size:16px;" onclick="startScanner()">SCAN QR CODE</button>
+    <hr>
+    <h3 style="text-align:center; margin-bottom:10px; font-size:18px;">Smart Attendance</h3>
+    <div id="attMsg" style="text-align:center; font-weight:bold; margin-bottom:10px; font-size:14px;"></div>
+    
+    <div id="reader" style="display:none; margin-bottom:15px; border-radius:8px; overflow:hidden;"></div>
+    <button id="scanBtn" class="btn-green" style="padding:16px; font-size:16px;" onclick="startScanner()">SCAN QR CODE</button>
 
-    <hr>
-    <h3 style="margin-bottom:10px; font-size:18px;">Notice Board</h3>
-    <div id="noticeList" style="background:#fff3cd; padding:15px; border-radius:8px; font-size:14px; color:#856404; line-height:1.6;"></div>
-  </div>
+    <hr>
+    <h3 style="margin-bottom:10px; font-size:18px;">Notice Board</h3>
+    <div id="noticeList" style="background:#fff3cd; padding:15px; border-radius:8px; font-size:14px; color:#856404; line-height:1.6;"></div>
+  </div>
 
-  <div id="adminDashboard" class="card admin-card hidden">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-      <h2 style="margin:0; color:#0f131c;">Admin Panel</h2>
-      <button id="adminRefreshBtn" onclick="refreshAdminData()" style="width:auto; padding:6px 12px; font-size:12px; margin:0; background:#34495e; border-radius:20px;">↻ Refresh</button>
-    </div>
-    
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('tabNotice', this)">Notices</div>
-      <div class="tab" onclick="switchTab('tabAtt', this)">Daily Att.</div>
-      <div class="tab" onclick="switchTab('tabManual', this)">Manual Att.</div>
-      <div class="tab" onclick="switchTab('tabChart', this)">Calendar</div>
-      <div class="tab" onclick="switchTab('tabLoc', this)">Location</div>
-    </div>
+  <div id="adminDashboard" class="card admin-card hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+      <h2 style="margin:0; color:#0f131c;">Admin Panel</h2>
+      <button id="adminRefreshBtn" onclick="refreshAdminData()" style="width:auto; padding:6px 12px; font-size:12px; margin:0; background:#34495e; border-radius:20px;">↻ Refresh</button>
+    </div>
+    
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('tabNotice', this)">Notices</div>
+      <div class="tab" onclick="switchTab('tabAtt', this)">Daily Att.</div>
+      <div class="tab" onclick="switchTab('tabManual', this)">Manual Att.</div>
+      <div class="tab" onclick="switchTab('tabChart', this)">Calendar</div>
+      <div class="tab" onclick="switchTab('tabLoc', this)">Location</div>
+    </div>
 
-    <div id="tabNotice">
-      <h3 style="margin-top:0;">Publish Global Notice</h3>
-      <textarea id="noticeMsg" rows="4" placeholder="Write notice here..."></textarea>
-      <div style="display:flex; gap:10px;">
-        <button onclick="submitAdminNotice()" style="flex:1;">Submit Notice</button>
-        <button onclick="clearAdminNotice()" class="btn-red" style="flex:1;">Clear Notice</button>
-      </div>
-      <div id="adminNoticeMsg" style="font-weight:bold; margin-top:10px; text-align:center;"></div>
-    </div>
+    <div id="tabNotice">
+      <h3 style="margin-top:0;">Publish Global Notice</h3>
+      <textarea id="noticeMsg" rows="4" placeholder="Write notice here..."></textarea>
+      <div style="display:flex; gap:10px;">
+        <button onclick="submitAdminNotice()" style="flex:1;">Submit Notice</button>
+        <button onclick="clearAdminNotice()" class="btn-red" style="flex:1;">Clear Notice</button>
+      </div>
+      <div id="adminNoticeMsg" style="font-weight:bold; margin-top:10px; text-align:center;"></div>
+    </div>
 
-    <div id="tabAtt" class="hidden">
-      <h3 style="margin-top:0;">Daily Attendance Filter</h3>
-      <div style="display:flex; gap:10px;">
-        <input type="date" id="attDate" style="flex:1;">
-        <button onclick="fetchDailyAttendance()" style="width:auto; padding:12px 20px;">Search</button>
-      </div>
-      <div class="table-responsive">
-        <table id="attTable">
-          <thead><tr><th>Time</th><th>ID</th><th>Name</th><th>Mobile</th><th>IN/OUT</th></tr></thead>
-          <tbody id="attBody"></tbody>
-        </table>
-      </div>
-    </div>
-    
-    <div id="tabManual" class="hidden">
-      <h3 style="margin-top:0; color:#2c3e50;">Mark Manual Attendance</h3>
-      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Agar student ID card laana bhool gaya hai, toh yahan ID ya Mobile number daal kar IN/OUT mark karein.</p>
-      <input type="text" id="manualAttInput" placeholder="Enter Student ID or Mobile No.">
-      <button onclick="markAdminManualAttendance()" class="btn-green">Mark Attendance</button>
-      <div id="manualAttMsg" style="font-weight:bold; margin-top:15px; font-size:15px; text-align:center;"></div>
-    </div>
+    <div id="tabAtt" class="hidden">
+      <h3 style="margin-top:0;">Daily Attendance Filter</h3>
+      <div style="display:flex; gap:10px;">
+        <input type="date" id="attDate" style="flex:1;">
+        <button onclick="fetchDailyAttendance()" style="width:auto; padding:12px 20px;">Search</button>
+      </div>
+      <div class="table-responsive">
+        <table id="attTable">
+          <thead><tr><th>Time</th><th>ID</th><th>Name</th><th>Mobile</th><th>IN/OUT</th></tr></thead>
+          <tbody id="attBody"></tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div id="tabManual" class="hidden">
+      <h3 style="margin-top:0; color:#2c3e50;">Mark Manual Attendance</h3>
+      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Agar student ID card laana bhool gaya hai, toh yahan ID ya Mobile number daal kar IN/OUT mark karein.</p>
+      <input type="text" id="manualAttInput" placeholder="Enter Student ID or Mobile No.">
+      <button onclick="markAdminManualAttendance()" class="btn-green">Mark Attendance</button>
+      <div id="manualAttMsg" style="font-weight:bold; margin-top:15px; font-size:15px; text-align:center;"></div>
+    </div>
 
-    <div id="tabChart" class="hidden">
-      <h3 style="margin-top:0;">Student Calendar</h3>
-      <input type="text" id="chartSearch" placeholder="Enter Student ID or Mobile">
-      <input type="month" id="chartMonth">
-      <button onclick="fetchCalendar()">Generate Calendar</button>
-      
-      <div id="calendarDiv" class="calendar"></div>
-      <div id="calStats" style="margin-top:20px; font-weight:bold; font-size:15px; text-align:center; background:#f8f9fa; padding:10px; border-radius:8px;"></div>
-      <div id="calDetails" style="margin-top:15px; text-align:center; color:#0f131c; font-weight:bold; line-height:1.6;"></div>
-    </div>
+    <div id="tabChart" class="hidden">
+      <h3 style="margin-top:0;">Student Calendar</h3>
+      <input type="text" id="chartSearch" placeholder="Enter Student ID or Mobile">
+      <input type="month" id="chartMonth">
+      <button onclick="fetchCalendar()">Generate Calendar</button>
+      
+      <div id="calendarDiv" class="calendar"></div>
+      <div id="calStats" style="margin-top:20px; font-weight:bold; font-size:15px; text-align:center; background:#f8f9fa; padding:10px; border-radius:8px;"></div>
+      <div id="calDetails" style="margin-top:15px; text-align:center; color:#0f131c; font-weight:bold; line-height:1.6;"></div>
+    </div>
 
-    <div id="tabLoc" class="hidden">
-      <h3>Set Library Geofence</h3>
-      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 15 meters of this exact point to scan.</p> 
-      <button class="btn-green" style="padding:16px;" onclick="setLibraryLocation()">Lock Current Location</button>
-      <div id="locSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
-      <hr>
-      <h3>Set Secure QR Code Text</h3>
-      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Jo text aap yahan likhenge, wahi text aapke printed QR code mein hona chahiye. Students ko exactly wahi scan karna padega.</p>
-      <input type="text" id="adminQrInput" placeholder="Enter Secret QR Text (e.g. SASL_2026)">
-      <button style="padding:16px;" onclick="saveAdminQRCode()">Lock New QR Code</button>
-      <div id="qrSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
-    </div>
-  </div>
-  
-  <script>
-    // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
-    const API_URL = "https://script.google.com/macros/s/AKfycbx4kbfaVHrqFsSO5v41RNcZPP0arAbM_oLxW0t5HiggjODp8XCjjpPkPGyHNK_FjTNy/exec";
+    <div id="tabLoc" class="hidden">
+      <h3>Set Library Geofence</h3>
+      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 15 meters of this exact point to scan.</p> 
+      <button class="btn-green" style="padding:16px;" onclick="setLibraryLocation()">Lock Current Location</button>
+      <div id="locSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
+      
+      <hr>
+      
+      <h3>Set Secure QR Code Text</h3>
+      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Jo text aap yahan likhenge, wahi text aapke printed QR code mein hona chahiye. Students ko exactly wahi scan karna padega.</p>
+      <input type="text" id="adminQrInput" placeholder="Enter Secret QR Text (e.g. SASL_2026)">
+      <button style="padding:16px;" onclick="saveAdminQRCode()">Lock New QR Code</button>
+      <div id="qrSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
+    </div>
+  </div>
+  
+  <script>
+    // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
+    const API_URL = "https://script.google.com/macros/s/AKfycbx4kbfaVHrqFsSO5v41RNcZPP0arAbM_oLxW0t5HiggjODp8XCjjpPkPGyHNK_FjTNy/exec";
 
-    const ALLOWED_RADIUS = 15;
-    let studentData = null;
-    let libLat = 0, libLng = 0;
-    let currentSecretQR = "";
-    let globalCalData = [];
-    let html5QrCode = null;
+    const ALLOWED_RADIUS = 15;
+    let studentData = null;
+    let libLat = 0, libLng = 0;
+    let currentSecretQR = "";
+    let globalCalData = [];
+    let html5QrCode = null;
 
-    function callBackend(action, data, onSuccess, onFailure) {
-      fetch(API_URL, {
-        redirect: "follow",
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, 
-        body: JSON.stringify({ action: action, data: data })
-      })
-      .then(response => response.json())
-      .then(res => { if(onSuccess) onSuccess(res); })
-      .catch(err => {
-        console.error("Fetch Error:", err);
-        show('offlineScreen');
-        if(onFailure) onFailure(err);
-      });
-    }
+    // 🚀 BACK BUTTON (POPSTATE) LOGIC FOR SCANNER
+    window.addEventListener("popstate", function(event) {
+        if (location.hash !== "#scanner") {
+            resetScannerUI(false); 
+        }
+    });
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        let role = localStorage.getItem("libRole");
-        let pin = localStorage.getItem("adminPin");
-        if (role === "Admin" && pin) { showPinScreen(); }
-      }
-    });
+    // 🚀 SMART API FETCH WITH FAKE ERROR FIX
+    function callBackend(action, data, onSuccess, onFailure) {
+      if (!navigator.onLine) {
+          show('offlineScreen');
+          if(onFailure) onFailure(new Error("Offline"));
+          return;
+      }
 
-    function showPinScreen() {
-      document.querySelectorAll('body > div:not(script):not(#pinScreen)').forEach(el => el.classList.add('hidden'));
-      document.getElementById("pinScreen").style.display = "flex";
-      document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
-      document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
-      document.getElementById("pinErrMsg").innerText = "";
-      document.getElementById("pin1").focus();
-    }
+      fetch(API_URL, {
+        redirect: "follow",
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, 
+        body: JSON.stringify({ action: action, data: data })
+      })
+      .then(response => response.text()) 
+      .then(text => {
+          try {
+              let res = JSON.parse(text);
+              if(onSuccess) onSuccess(res);
+          } catch(e) {
+              console.error("Backend Error Data:", text);
+              alert("Server Error: Backend se sahi data nahi aaya! Kripya Apna naya Google Script Deployment check karein.");
+              if(onFailure) onFailure(e);
+          }
+      })
+      .catch(err => {
+          console.error("Fetch Error:", err);
+          if (!navigator.onLine) { show('offlineScreen'); } 
+          else { alert("Network Error: " + err.message); }
+          if(onFailure) onFailure(err);
+      });
+    }
 
-    function movePinFocus(curr, nextID) {
-      if(curr.value.length === 1) {
-        if(nextID === 'verify') processAdminPin();
-        else document.getElementById(nextID).focus();
-      }
-    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        let role = localStorage.getItem("libRole");
+        let pin = localStorage.getItem("adminPin");
+        if (role === "Admin" && pin) { showPinScreen(); }
+      }
+    });
 
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Backspace') {
-        let active = document.activeElement;
-        if (active.id === 'pin4' && active.value === '') document.getElementById('pin3').focus();
-        else if (active.id === 'pin3' && active.value === '') document.getElementById('pin2').focus();
-        else if (active.id === 'pin2' && active.value === '') document.getElementById('pin1').focus();
-      }
-    });
+    function showPinScreen() {
+      document.querySelectorAll('body > div:not(script):not(#pinScreen)').forEach(el => el.classList.add('hidden'));
+      document.getElementById("pinScreen").style.display = "flex";
+      document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
+      document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
+      document.getElementById("pinErrMsg").innerText = "";
+      document.getElementById("pin1").focus();
+    }
 
-    function processAdminPin() {
-      let ent = document.getElementById("pin1").value + document.getElementById("pin2").value + document.getElementById("pin3").value + document.getElementById("pin4").value;
-      let savedPin = localStorage.getItem("adminPin");
-      
-      document.getElementById("pinActionBtn").innerText = "Verifying...";
-      setTimeout(() => {
-        document.getElementById("pinActionBtn").innerText = "Unlock";
-        if(ent === savedPin) {
-          document.getElementById("pinScreen").style.display = "none";
-          show('adminDashboard');
-        } else {
-          document.getElementById("pinErrMsg").innerText = "Incorrect PIN!";
-          document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
-          document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
-          document.getElementById("pin1").focus();
-        }
-      }, 400);
-    }
+    function movePinFocus(curr, nextID) {
+      if(curr.value.length === 1) {
+        if(nextID === 'verify') processAdminPin();
+        else document.getElementById(nextID).focus();
+      }
+    }
 
-    window.addEventListener('offline', () => show('offlineScreen'));
-    window.addEventListener('online', () => window.location.reload());
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace') {
+        let active = document.activeElement;
+        if (active.id === 'pin4' && active.value === '') document.getElementById('pin3').focus();
+        else if (active.id === 'pin3' && active.value === '') document.getElementById('pin2').focus();
+        else if (active.id === 'pin2' && active.value === '') document.getElementById('pin1').focus();
+      }
+    });
 
-    window.onload = function() {
-      try {
-        if (!navigator.onLine) { show('offlineScreen'); return; }
+    function processAdminPin() {
+      let ent = document.getElementById("pin1").value + document.getElementById("pin2").value + document.getElementById("pin3").value + document.getElementById("pin4").value;
+      let savedPin = localStorage.getItem("adminPin");
+      
+      document.getElementById("pinActionBtn").innerText = "Verifying...";
+      setTimeout(() => {
+        document.getElementById("pinActionBtn").innerText = "Unlock";
+        if(ent === savedPin) {
+          document.getElementById("pinScreen").style.display = "none";
+          show('adminDashboard');
+        } else {
+          document.getElementById("pinErrMsg").innerText = "Incorrect PIN!";
+          document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
+          document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
+          document.getElementById("pin1").focus();
+        }
+      }, 400);
+    }
 
-        let savedRole = localStorage.getItem("libRole");
-        let savedId = localStorage.getItem("libStuId");
-        let savedMob = localStorage.getItem("libStuMob");
-        let savedData = localStorage.getItem("libStuData"); 
-        
-        if(savedRole === "Admin") {
-          let dateInput = document.getElementById("attDate");
-          if(dateInput) dateInput.value = new Date().toISOString().split('T')[0]; 
-          let monthInput = document.getElementById("chartMonth");
-          if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
-          fetchDailyAttendance();
+    window.addEventListener('offline', () => show('offlineScreen'));
+    window.addEventListener('online', () => window.location.reload());
 
-          let savedPin = localStorage.getItem("adminPin");
-          if(savedPin) { showPinScreen(); } else { show('adminDashboard'); }
-          return;
-        }
-        
-        if(savedRole === "Student" && savedId && savedMob) {
-          if(savedData) { setupStudentDashboard(JSON.parse(savedData)); } 
-          else { document.getElementById("loginScreen").classList.add("hidden"); }
-          
-          callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
-              if(res.success) {
-                if(!res.active) { show('inactiveScreen'); }
-                else { 
-                    localStorage.setItem("libStuData", JSON.stringify(res)); 
-                    if(!savedData) setupStudentDashboard(res); 
-                }
-              } else { logout(); }
-          }, err => { 
-              console.error("Server Error: ", err); 
-              if (!navigator.onLine) show('offlineScreen');
-          });
-        } else {
-          show('loginScreen');
-        }
-      } catch (e) { show('loginScreen'); }
-    };
+    window.onload = function() {
+      try {
+        if (!navigator.onLine) { show('offlineScreen'); return; }
 
-    function show(id) { 
-      document.querySelectorAll('body > div:not(script):not(#pinScreen)').forEach(el => el.classList.add('hidden')); 
-      let target = document.getElementById(id);
-      if(target) target.classList.remove('hidden'); 
-    }
-    
-    function logout() { 
-      localStorage.clear(); 
-      studentData = null; 
-      if(document.getElementById("loginUser")) document.getElementById("loginUser").value = ""; 
-      if(document.getElementById("loginPass")) document.getElementById("loginPass").value = "";
-      if(document.getElementById("adminUser")) document.getElementById("adminUser").value = ""; 
-      if(document.getElementById("adminPass")) document.getElementById("adminPass").value = "";
-      if(document.getElementById("stuIdInput")) document.getElementById("stuIdInput").value = "";
-      if(document.getElementById("stuMobInput")) document.getElementById("stuMobInput").value = "";
-      show('loginScreen'); 
-    }
+        let savedRole = localStorage.getItem("libRole");
+        let savedId = localStorage.getItem("libStuId");
+        let savedMob = localStorage.getItem("libStuMob");
+        let savedData = localStorage.getItem("libStuData"); 
+        
+        if(savedRole === "Admin") {
+          let dateInput = document.getElementById("attDate");
+          if(dateInput) dateInput.value = new Date().toISOString().split('T')[0]; 
+          let monthInput = document.getElementById("chartMonth");
+          if(monthInput) monthInput.value = new Date().toISOString().slice(0,7);
+          fetchDailyAttendance();
 
-    function toggleLoginFields() {
-      let r = document.getElementById("roleSelect").value;
-      if(r === "Student") { 
-        document.getElementById("studentLoginFields").classList.remove("hidden"); 
-        document.getElementById("adminLoginFields").classList.add("hidden"); 
-      } else { 
-        document.getElementById("studentLoginFields").classList.add("hidden"); 
-        document.getElementById("adminLoginFields").classList.remove("hidden"); 
-      }
-    }
+          let savedPin = localStorage.getItem("adminPin");
+          if(savedPin) { showPinScreen(); } else { show('adminDashboard'); }
+          return;
+        }
+        
+        if(savedRole === "Student" && savedId && savedMob) {
+          if(savedData) { setupStudentDashboard(JSON.parse(savedData)); } 
+          else { document.getElementById("loginScreen").classList.add("hidden"); }
+          
+          callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
+              if(res.success) {
+                if(!res.active) { show('inactiveScreen'); }
+                else { 
+                    localStorage.setItem("libStuData", JSON.stringify(res)); 
+                    if(!savedData) setupStudentDashboard(res); 
+                }
+              } else { logout(); }
+          }, err => { 
+              console.error("Server Error: ", err); 
+              if (!navigator.onLine) show('offlineScreen');
+          });
+        } else {
+          show('loginScreen');
+        }
+      } catch (e) { show('loginScreen'); }
+    };
 
-    function processLogin() {
-      let r = document.getElementById("roleSelect").value;
-      let u = (r === "Student") ? document.getElementById("loginUser").value.trim() : document.getElementById("adminUser").value.trim();
-      let p = (r === "Student") ? document.getElementById("loginPass").value.trim() : document.getElementById("adminPass").value.trim();
-      let msg = document.getElementById("loginMsg");
-      
-      if(u === "" || p === "") { msg.innerText = "Please enter all fields"; return; }
-      msg.innerText = "Authenticating...";
-      
-      callBackend("verifyUserLogin", {r: r, u: u, p: p}, res => {
-        if(res.success) {
-          msg.innerText = "";
-          localStorage.setItem("isLoggedIn", "true");
-          
-          if(r === "Admin") {
-            localStorage.setItem("libRole", "Admin"); 
-            document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
-            document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
-            fetchDailyAttendance();
+    function show(id) { 
+      document.querySelectorAll('body > div:not(script):not(#pinScreen)').forEach(el => el.classList.add('hidden')); 
+      let target = document.getElementById(id);
+      if(target) target.classList.remove('hidden'); 
+    }
+    
+    function logout() { 
+      localStorage.clear(); 
+      studentData = null; 
+      if(document.getElementById("loginUser")) document.getElementById("loginUser").value = ""; 
+      if(document.getElementById("loginPass")) document.getElementById("loginPass").value = "";
+      if(document.getElementById("adminUser")) document.getElementById("adminUser").value = ""; 
+      if(document.getElementById("adminPass")) document.getElementById("adminPass").value = "";
+      if(document.getElementById("stuIdInput")) document.getElementById("stuIdInput").value = "";
+      if(document.getElementById("stuMobInput")) document.getElementById("stuMobInput").value = "";
+      show('loginScreen'); 
+    }
 
-            let existingPin = localStorage.getItem("adminPin");
-            if (!existingPin) {
-                let newPin = prompt("Admin Security: Set a 4-Digit PIN for App Lock:");
-                localStorage.setItem("adminPin", (newPin && newPin.length === 4 && !isNaN(newPin)) ? newPin : "0000");
-            }
-            show('adminDashboard'); 
-          } else {
-            askForLocationPermission();
-          }
-        } else {
-          msg.innerText = res.message;
-        }
-      });
-    }
+    function toggleLoginFields() {
+      let r = document.getElementById("roleSelect").value;
+      if(r === "Student") { 
+        document.getElementById("studentLoginFields").classList.remove("hidden"); 
+        document.getElementById("adminLoginFields").classList.add("hidden"); 
+      } else { 
+        document.getElementById("studentLoginFields").classList.add("hidden"); 
+        document.getElementById("adminLoginFields").classList.remove("hidden"); 
+      }
+    }
 
-    function askForLocationPermission() {
-      let msg = document.getElementById("loginMsg");
-      msg.style.color = "blue";
-      msg.innerText = "Requesting GPS Location Permission...";
-      if(!navigator.geolocation) { msg.style.color = "red"; msg.innerText = "GPS Not Supported!"; return; }
-      
-      navigator.geolocation.getCurrentPosition(pos => {
-        msg.innerText = "";
-        show('linkStudentScreen');
-      }, err => {
-        msg.style.color = "red";
-        msg.innerText = "GPS Permission Denied! Please allow location to continue.";
-      }, {enableHighAccuracy: true});
-    }
+    function processLogin() {
+      let r = document.getElementById("roleSelect").value;
+      let u = (r === "Student") ? document.getElementById("loginUser").value.trim() : document.getElementById("adminUser").value.trim();
+      let p = (r === "Student") ? document.getElementById("loginPass").value.trim() : document.getElementById("adminPass").value.trim();
+      let msg = document.getElementById("loginMsg");
+      
+      if(u === "" || p === "") { msg.innerText = "Please enter all fields"; return; }
+      msg.innerText = "Authenticating...";
+      
+      callBackend("verifyUserLogin", {r: r, u: u, p: p}, res => {
+        if(res.success) {
+          msg.innerText = "";
+          localStorage.setItem("isLoggedIn", "true");
+          
+          if(r === "Admin") {
+            localStorage.setItem("libRole", "Admin"); 
+            document.getElementById("attDate").value = new Date().toISOString().split('T')[0]; 
+            document.getElementById("chartMonth").value = new Date().toISOString().slice(0,7);
+            fetchDailyAttendance();
 
-    function linkStudentDetails() {
-      let id = document.getElementById("stuIdInput").value.trim();
-      let mob = document.getElementById("stuMobInput").value.trim();
-      let msg = document.getElementById("linkMsg");
-      
-      if(id === "" || mob === "") { msg.innerText = "Enter ID and Mobile"; return; }
-      msg.innerText = "Loading Dashboard...";
-      
-      callBackend("checkStudentLoginAndStatus", {id: id, mob: mob}, res => {
-        if(res.success) {
-          localStorage.setItem("libRole", "Student");
-          localStorage.setItem("libStuId", id);
-          localStorage.setItem("libStuMob", mob);
-          localStorage.setItem("libStuData", JSON.stringify(res));
-          
-          if(!res.active) show('inactiveScreen');
-          else setupStudentDashboard(res);
-        } else {
-          msg.innerText = res.message;
-        }
-      }, err => {
-        msg.innerText = "System Error: Network issue";
-      });
-    }
+            let existingPin = localStorage.getItem("adminPin");
+            if (!existingPin) {
+                let newPin = prompt("Admin Security: Set a 4-Digit PIN for App Lock:");
+                localStorage.setItem("adminPin", (newPin && newPin.length === 4 && !isNaN(newPin)) ? newPin : "0000");
+            }
+            show('adminDashboard'); 
+          } else {
+            askForLocationPermission();
+          }
+        } else {
+          msg.innerText = res.message;
+        }
+      });
+    }
 
-    function setupStudentDashboard(res) {
-      show('studentDashboard'); 
-      studentData = res;
-      document.getElementById("dName").innerText = res.name;
-      document.getElementById("dId").innerText = res.id;
-      document.getElementById("dMob").innerText = "+91 " + res.mobile;
-      document.getElementById("dJoin").innerText = res.joinDate;
-      document.getElementById("dDue").innerText = res.dueDate;
-      
-      try {
-        let pts = res.dueDate.split("/"); let due = new Date(pts[2], pts[1]-1, pts[0]);
-        let today = new Date(); today.setHours(0,0,0,0); due.setHours(0,0,0,0);
-        let diff = Math.ceil((due.getTime() - today.getTime()) / (1000*60*60*24));
-        let ddEl = document.getElementById("dDueDays");
-        if(diff < 0) { ddEl.innerText = Math.abs(diff) + " Days Overdue!"; ddEl.style.color = "#c0392b"; }
-        else { ddEl.innerText = diff + " Days Left"; ddEl.style.color = "#27ae60"; }
-      } catch(e){}
+    function askForLocationPermission() {
+      let msg = document.getElementById("loginMsg");
+      msg.style.color = "blue";
+      msg.innerText = "Requesting GPS Location Permission...";
+      if(!navigator.geolocation) { msg.style.color = "red"; msg.innerText = "GPS Not Supported!"; return; }
+      
+      navigator.geolocation.getCurrentPosition(pos => {
+        msg.innerText = "";
+        show('linkStudentScreen');
+      }, err => {
+        msg.style.color = "red";
+        msg.innerText = "GPS Permission Denied! Please allow location to continue.";
+      }, {enableHighAccuracy: true});
+    }
 
-      if(res.photo) {
-        let m = res.photo.match(/[-\w]{25,}/);
-        if(m) document.getElementById("dPhoto").src = "https://drive.google.com/thumbnail?id=" + m[0] + "&sz=w200";
-      }
-      
-      callBackend("getDashboardExtras", {}, dash => {
-          try {
-            if (!dash) dash = { lat: 0, lng: 0, qrCode: "", notices: [] };
-            libLat = dash.lat || 0; 
-            libLng = dash.lng || 0;
-            currentSecretQR = dash.qrCode || ""; 
-            
-            let nHtml = ""; 
-            if(dash.notices && dash.notices.length > 0) {
-              dash.notices.forEach(n => { 
-                let safeText = n.text ? n.text.toString().replace(/\n/g, '<br>') : "";
-                if(safeText) nHtml += "<div style='margin-bottom:12px; border-bottom:1px dashed #ccc; padding-bottom:8px;'><b>["+n.date+"]</b><br>"+safeText+"</div>"; 
-              });
-            }
-            document.getElementById("noticeList").innerHTML = nHtml || "No active notices.";
-          } catch(e) { }
-      });
-    } 
+    function linkStudentDetails() {
+      let id = document.getElementById("stuIdInput").value.trim();
+      let mob = document.getElementById("stuMobInput").value.trim();
+      let msg = document.getElementById("linkMsg");
+      
+      if(id === "" || mob === "") { msg.innerText = "Enter ID and Mobile"; return; }
+      msg.innerText = "Loading Dashboard...";
+      
+      callBackend("checkStudentLoginAndStatus", {id: id, mob: mob}, res => {
+        if(res.success) {
+          localStorage.setItem("libRole", "Student");
+          localStorage.setItem("libStuId", id);
+          localStorage.setItem("libStuMob", mob);
+          localStorage.setItem("libStuData", JSON.stringify(res));
+          
+          if(!res.active) show('inactiveScreen');
+          else setupStudentDashboard(res);
+        } else {
+          msg.innerText = res.message;
+        }
+      }, err => {
+        msg.innerText = "System Error: Network issue";
+      });
+    }
 
-    function startScanner() {
-  let readerDiv = document.getElementById("reader");
-  readerDiv.style.display = "flex";
-  
-  // PURANE BUTTONS SAAMNE NA AAYEN, ISLIYE EK SAFI DIV
-  readerDiv.innerHTML = '<div id="qr-scanner-content"></div>';
-  let contentDiv = document.getElementById("qr-scanner-content");
-  
-  let closeBtn = document.createElement("button");
-  closeBtn.innerText = "✕ CLOSE";
-  closeBtn.className = "close-scanner-btn";
-  closeBtn.onclick = () => resetScannerUI();
-  readerDiv.appendChild(closeBtn);
-  
-  if(!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-  
-  html5QrCode.start(
-      { facingMode: "environment" }, 
-      { fps: 10, qrbox: { width: 250, height: 250 } }, 
-      (decodedText) => {
-          resetScannerUI();
-          verifyLocationAndMark(decodedText); 
-      }
-  ).catch(err => {
-      alert("Camera Permission Denied!");
-      resetScannerUI();
-  });
-}
+    function setupStudentDashboard(res) {
+      show('studentDashboard'); 
+      studentData = res;
+      document.getElementById("dName").innerText = res.name;
+      document.getElementById("dId").innerText = res.id;
+      document.getElementById("dMob").innerText = "+91 " + res.mobile;
+      document.getElementById("dJoin").innerText = res.joinDate;
+      document.getElementById("dDue").innerText = res.dueDate;
+      
+      try {
+        let pts = res.dueDate.split("/"); let due = new Date(pts[2], pts[1]-1, pts[0]);
+        let today = new Date(); today.setHours(0,0,0,0); due.setHours(0,0,0,0);
+        let diff = Math.ceil((due.getTime() - today.getTime()) / (1000*60*60*24));
+        let ddEl = document.getElementById("dDueDays");
+        if(diff < 0) { ddEl.innerText = Math.abs(diff) + " Days Overdue!"; ddEl.style.color = "#c0392b"; }
+        else { ddEl.innerText = diff + " Days Left"; ddEl.style.color = "#27ae60"; }
+      } catch(e){}
 
-   function resetScannerUI() {
-      let readerDiv = document.getElementById("reader");
-      
-      // 1. Sabse pehle screen se turant scanner hatao
-      readerDiv.style.display = "none";
-      
-      // 2. Background mein camera ko safely stop aur clear karo
-      if(html5QrCode) {
-          html5QrCode.stop().then(() => {
-              html5QrCode.clear(); // Library ka apna garbage saaf karega
-              readerDiv.innerHTML = ""; // Custom close button hata dega
-              html5QrCode = null; // Naye scan ke liye object bilkul fresh kar dega
-          }).catch(err => {
-              console.log(err);
-              readerDiv.innerHTML = ""; 
-              html5QrCode = null;
-          });
-      } else {
-          readerDiv.innerHTML = ""; 
-      }
-    }
+      if(res.photo) {
+        let m = res.photo.match(/[-\w]{25,}/);
+        if(m) document.getElementById("dPhoto").src = "https://drive.google.com/thumbnail?id=" + m[0] + "&sz=w200";
+      }
+      
+      callBackend("getDashboardExtras", {}, dash => {
+          try {
+            if (!dash) dash = { lat: 0, lng: 0, qrCode: "", notices: [] };
+            libLat = dash.lat || 0; 
+            libLng = dash.lng || 0;
+            currentSecretQR = dash.qrCode || ""; 
+            
+            let nHtml = ""; 
+            if(dash.notices && dash.notices.length > 0) {
+              dash.notices.forEach(n => { 
+                let safeText = n.text ? n.text.toString().replace(/\n/g, '<br>') : "";
+                if(safeText) nHtml += "<div style='margin-bottom:12px; border-bottom:1px dashed #ccc; padding-bottom:8px;'><b>["+n.date+"]</b><br>"+safeText+"</div>"; 
+              });
+            }
+            document.getElementById("noticeList").innerHTML = nHtml || "No active notices.";
+          } catch(e) { }
+      });
+    } 
 
-    function verifyLocationAndMark(decodedText, retryCount = 0) {
-      if (decodedText.trim() !== currentSecretQR) {
-         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; 
-         return; 
-      }
+    // 🚀 ULTRA-SMOOTH FULL SCREEN SCANNER
+    function startScanner() {
+      let readerDiv = document.getElementById("reader");
+      readerDiv.style.display = "block"; // Full screen ke liye
+      
+      // Screen ko fresh karne ke liye khali div (No Close Button)
+      readerDiv.innerHTML = '<div id="qr-scanner-content" style="width: 100%; height: 100%;"></div>';
+      
+      // 🎯 BACK BUTTON JADOO: URL ke aage '#scanner' laga do
+      history.pushState({ scannerOpen: true }, "", "#scanner");
+      
+      if(!html5QrCode) html5QrCode = new Html5Qrcode("qr-scanner-content");
+      
+      // Camera Start (Bina kisi lag ke)
+      html5QrCode.start(
+          { facingMode: "environment" }, 
+          { fps: 10, qrbox: { width: 250, height: 250 } }, 
+          (decodedText) => {
+              resetScannerUI(true); // Scan hone par scanner band karke ek kadam back jao
+              verifyLocationAndMark(decodedText); 
+          }
+      ).catch(err => {
+          alert("Camera Permission Denied!");
+          resetScannerUI(true); // Permission deny hone par bhi wapas jao
+      });
+    }
 
-      let msgBox = document.getElementById("attMsg");
-      
-      if (retryCount === 0) {
-        msgBox.innerHTML = "<span style='color:#0f131c;'>QR Scanned! Optimizing GPS Accuracy... 🛰️</span>";
-      } else {
-        msgBox.innerHTML = "<span style='color:#3498db;'>Fixing GPS Drift (Attempt " + (retryCount + 1) + "/3)... ⏳</span>";
-      }
-      
-      if(!navigator.geolocation) { 
-        msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; 
-        return; 
-      }
-      
-      navigator.geolocation.getCurrentPosition(pos => {
-        let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
+    function resetScannerUI(goBack = false) {
+      let readerDiv = document.getElementById("reader");
+      
+      // 1. Turant screen se hata do (Smooth effect)
+      readerDiv.style.display = "none";
+      
+      // 2. Camera hardware ko safely stop karo
+      if(html5QrCode) {
+          html5QrCode.stop().then(() => {
+              html5QrCode.clear(); 
+              readerDiv.innerHTML = ""; 
+              html5QrCode = null; 
+          }).catch(err => {
+              readerDiv.innerHTML = ""; 
+              html5QrCode = null;
+          });
+      } else {
+          readerDiv.innerHTML = ""; 
+      }
 
-        if(dist <= ALLOWED_RADIUS) {
-            msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
-            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
-              if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
-              else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Error: " + res.message + "</span>";
-            });
-        } 
-        else if (retryCount < 3) {
-            setTimeout(() => {
-                verifyLocationAndMark(decodedText, retryCount + 1);
-            }, 1200);
-        } 
-        else {
-            msgBox.innerHTML = "<span style='color:#c0392b;'>Range Error: Aap library se " + Math.round(dist) + " meter door hain! (Allowed: 15m). Kripya thoda khule me ya gate ke paas khade ho kar scan karein.</span>";
-        }
-      }, err => {
-        if (retryCount < 3) {
-            setTimeout(() => {
-                verifyLocationAndMark(decodedText, retryCount + 1);
-            }, 1200);
-        } else {
-            msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak hai ya location turned off hai!</span>";
-        }
-      }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }); 
-    }
+      // 3. Agar scan khud success/fail hua hai, toh program se back button daba do
+      if (goBack && location.hash === "#scanner") {
+          history.back();
+      }
+    }
 
-    function saveAdminQRCode() {
-      let text = document.getElementById("adminQrInput").value.trim();
-      if(!text) { alert("Please enter QR text"); return; }
-      document.getElementById("qrSaveMsg").innerHTML = "<span style='color:#0f131c;'>Saving...</span>";
-      callBackend("saveSecretQRCode", {text: text}, res => {
-        document.getElementById("qrSaveMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>";
-        document.getElementById("adminQrInput").value = "";
-      });
-    }
+    // 🚀 GPS ACCURACY OPTIMIZATION SYSTEM (15m Limit & Auto-Retry)
+    function verifyLocationAndMark(decodedText, retryCount = 0) {
+      if (decodedText.trim() !== currentSecretQR) {
+         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; 
+         return; 
+      }
 
-    function getDistance(lat1, lon1, lat2, lon2) {
-      let R = 6371e3, p1 = lat1 * Math.PI/180, p2 = lat2 * Math.PI/180, dp = (lat2-lat1) * Math.PI/180, dl = (lon2-lon1) * Math.PI/180;
-      let a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
-      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-    }
+      let msgBox = document.getElementById("attMsg");
+      
+      if (retryCount === 0) {
+        msgBox.innerHTML = "<span style='color:#0f131c;'>QR Scanned! Optimizing GPS Accuracy... 🛰️</span>";
+      } else {
+        msgBox.innerHTML = "<span style='color:#3498db;'>Fixing GPS Drift (Attempt " + (retryCount + 1) + "/3)... ⏳</span>";
+      }
+      
+      if(!navigator.geolocation) { 
+        msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; 
+        return; 
+      }
+      
+      navigator.geolocation.getCurrentPosition(pos => {
+        let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
 
-    function switchTab(tabId, el) { 
-      document.querySelectorAll('.admin-card > div[id^="tab"]').forEach(div => div.classList.add('hidden'));
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.getElementById(tabId).classList.remove('hidden'); el.classList.add('active');
-    }
+        if(dist <= 15) {
+            msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
+            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
+              if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
+              else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Error: " + res.message + "</span>";
+            });
+        } 
+        else if (retryCount < 3) {
+            setTimeout(() => {
+                verifyLocationAndMark(decodedText, retryCount + 1);
+            }, 1200);
+        } 
+        else {
+            msgBox.innerHTML = "<span style='color:#c0392b;'>Range Error: Aap library se " + Math.round(dist) + " meter door hain! (Allowed: 15m). Kripya thoda khule me ya gate ke paas khade ho kar scan karein.</span>";
+        }
+      }, err => {
+        if (retryCount < 3) {
+            setTimeout(() => {
+                verifyLocationAndMark(decodedText, retryCount + 1);
+            }, 1200);
+        } else {
+            msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak hai ya location turned off hai!</span>";
+        }
+      }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }); 
+    }
 
-    function submitAdminNotice() {
-      let txt = document.getElementById("noticeMsg").value.trim();
-      if(!txt) return;
-      document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#0f131c;'>Saving...</span>";
-      callBackend("saveNotice", {txt: txt}, res => { 
-        document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>"; 
-      });
-    }
+    function saveAdminQRCode() {
+      let text = document.getElementById("adminQrInput").value.trim();
+      if(!text) { alert("Please enter QR text"); return; }
+      document.getElementById("qrSaveMsg").innerHTML = "<span style='color:#0f131c;'>Saving...</span>";
+      callBackend("saveSecretQRCode", {text: text}, res => {
+        document.getElementById("qrSaveMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>";
+        document.getElementById("adminQrInput").value = "";
+      });
+    }
 
-    function clearAdminNotice() {
-      if(!confirm("Are you sure you want to delete all active notices?")) return;
-      document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#c0392b;'>Clearing...</span>";
-      callBackend("clearAllNotices", {}, res => {
-        document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>";
-        document.getElementById("noticeMsg").value = ""; 
-      });
-    }
+    function getDistance(lat1, lon1, lat2, lon2) {
+      let R = 6371e3, p1 = lat1 * Math.PI/180, p2 = lat2 * Math.PI/180, dp = (lat2-lat1) * Math.PI/180, dl = (lon2-lon1) * Math.PI/180;
+      let a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    }
 
-    function fetchDailyAttendance() {
-      let dStr = document.getElementById("attDate").value; 
-      if(!dStr) return;
-      document.getElementById("attBody").innerHTML = "<tr><td colspan='5' style='text-align:center;'>Loading...</td></tr>";
-      
-      callBackend("getDailyAttendance", {dStr: dStr}, list => {
-          let html = ""; 
-          list.forEach(r => { 
-            let badge = r.type === 'IN' ? "<span style='color:#27ae60; font-weight:bold;'>IN</span>" : "<span style='color:#c0392b; font-weight:bold;'>OUT</span>";
-            html += `<tr><td>${r.time}</td><td>${r.id}</td><td>${r.name}</td><td>${r.mobile}</td><td>${badge}</td></tr>`; 
-          });
-          document.getElementById("attBody").innerHTML = html || "<tr><td colspan='5' style='text-align:center;'>No records found</td></tr>";
-      }, err => {
-          document.getElementById("attBody").innerHTML = `<tr><td colspan='5' style='text-align:center; color:red;'>Error</td></tr>`;
-      });
-    }
+    function switchTab(tabId, el) { 
+      document.querySelectorAll('.admin-card > div[id^="tab"]').forEach(div => div.classList.add('hidden'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(tabId).classList.remove('hidden'); el.classList.add('active');
+    }
 
-    function fetchCalendar() {
-      let search = document.getElementById("chartSearch").value;
-      let monthStr = document.getElementById("chartMonth").value; 
-      if(!search || !monthStr) { alert("Please enter ID/Mobile and select Month"); return; }
-      
-      document.getElementById("calendarDiv").innerHTML = "<div style='grid-column: span 7; text-align:center;'>Loading Calendar...</div>";
-      document.getElementById("calStats").innerHTML = "";
-      document.getElementById("calDetails").innerHTML = "";
-      
-      callBackend("getStudentCalendarData", {search: search, monthStr: monthStr}, res => { 
-          globalCalData = res; 
-          buildCalendar(monthStr); 
-      }, err => {
-          document.getElementById("calendarDiv").innerHTML = `<div style='grid-column: span 7; text-align:center; color:red;'>Error</div>`;
-      });
-    }
+    function submitAdminNotice() {
+      let txt = document.getElementById("noticeMsg").value.trim();
+      if(!txt) return;
+      document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#0f131c;'>Saving...</span>";
+      callBackend("saveNotice", {txt: txt}, res => { 
+        document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>"; 
+      });
+    }
 
-    function buildCalendar(monthStr) {
-      let pts = monthStr.split("-"); let year = parseInt(pts[0]), month = parseInt(pts[1]) - 1;
-      let daysInMonth = new Date(year, month + 1, 0).getDate();
-      let calDiv = document.getElementById("calendarDiv"); calDiv.innerHTML = "";
-      let presentCount = 0;
+    function clearAdminNotice() {
+      if(!confirm("Are you sure you want to delete all active notices?")) return;
+      document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#c0392b;'>Clearing...</span>";
+      callBackend("clearAllNotices", {}, res => {
+        document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>";
+        document.getElementById("noticeMsg").value = ""; 
+      });
+    }
 
-      for(let i=1; i<=daysInMonth; i++) {
-        let dStr = year + "-" + ("0"+(month+1)).slice(-2) + "-" + ("0"+i).slice(-2); 
-        let dayRecords = globalCalData.filter(r => r.date === dStr);
-        let statusClass = dayRecords.length > 0 ? "present" : "absent";
-        if(dayRecords.length > 0) presentCount++;
-        
-        let box = document.createElement("div"); box.className = "day " + statusClass; box.innerText = i;
-        box.onclick = function() {
-          if(dayRecords.length > 0) {
-            let info = `Date: ${("0"+i).slice(-2)}/${("0"+(month+1)).slice(-2)}/${year}<br><br>`;
-            dayRecords.forEach(r => { 
-              let color = r.type === 'IN' ? 'green' : 'red';
-              info += `<span style="color:${color};">[${r.type}]</span> at ${r.time}<br>`; 
-            });
-            document.getElementById("calDetails").innerHTML = info;
-          } else document.getElementById("calDetails").innerHTML = `Absent on this day.`;
-        };
-        calDiv.appendChild(box);
-      }
-      
-      let today = new Date();
-      let daysPassed = (today.getMonth() === month && today.getFullYear() === year) ? today.getDate() : daysInMonth;
-      let absentCount = daysPassed - presentCount;
-      let percent = daysPassed > 0 ? Math.round((presentCount / daysPassed) * 100) : 0;
-      
-      document.getElementById("calStats").innerHTML = `<span style='color:#27ae60'>Present: ${presentCount}</span> | <span style='color:#c0392b'>Absent: ${absentCount}</span> | <span style='color:#0f131c'>Percentage: ${percent}%</span>`;
-    }
+    function fetchDailyAttendance() {
+      let dStr = document.getElementById("attDate").value; 
+      if(!dStr) return;
+      document.getElementById("attBody").innerHTML = "<tr><td colspan='5' style='text-align:center;'>Loading...</td></tr>";
+      
+      callBackend("getDailyAttendance", {dStr: dStr}, list => {
+          let html = ""; 
+          list.forEach(r => { 
+            let badge = r.type === 'IN' ? "<span style='color:#27ae60; font-weight:bold;'>IN</span>" : "<span style='color:#c0392b; font-weight:bold;'>OUT</span>";
+            html += `<tr><td>${r.time}</td><td>${r.id}</td><td>${r.name}</td><td>${r.mobile}</td><td>${badge}</td></tr>`; 
+          });
+          document.getElementById("attBody").innerHTML = html || "<tr><td colspan='5' style='text-align:center;'>No records found</td></tr>";
+      }, err => {
+          document.getElementById("attBody").innerHTML = `<tr><td colspan='5' style='text-align:center; color:red;'>Error</td></tr>`;
+      });
+    }
 
-    function setLibraryLocation() {
-      let msgBox = document.getElementById("locSaveMsg");
-      msgBox.innerHTML = "<span style='color:#0f131c;'>Warming up GPS hardware... Please wait (10s) 🛰️</span>";
-      
-      if(!navigator.geolocation) {
-          msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Permission Denied!</span>";
-          return;
-      }
+    function fetchCalendar() {
+      let search = document.getElementById("chartSearch").value;
+      let monthStr = document.getElementById("chartMonth").value; 
+      if(!search || !monthStr) { alert("Please enter ID/Mobile and select Month"); return; }
+      
+      document.getElementById("calendarDiv").innerHTML = "<div style='grid-column: span 7; text-align:center;'>Loading Calendar...</div>";
+      document.getElementById("calStats").innerHTML = "";
+      document.getElementById("calDetails").innerHTML = "";
+      
+      callBackend("getStudentCalendarData", {search: search, monthStr: monthStr}, res => { 
+          globalCalData = res; 
+          buildCalendar(monthStr); 
+      }, err => {
+          document.getElementById("calendarDiv").innerHTML = `<div style='grid-column: span 7; text-align:center; color:red;'>Error</div>`;
+      });
+    }
 
-      let bestAccuracy = 9999;
-      let bestLat = 0, bestLng = 0;
-      let attemptCount = 0;
+    function buildCalendar(monthStr) {
+      let pts = monthStr.split("-"); let year = parseInt(pts[0]), month = parseInt(pts[1]) - 1;
+      let daysInMonth = new Date(year, month + 1, 0).getDate();
+      let calDiv = document.getElementById("calendarDiv"); calDiv.innerHTML = "";
+      let presentCount = 0;
 
-      let geoWatchId = navigator.geolocation.watchPosition(
-          (pos) => {
-              attemptCount++;
-              if (pos.coords.accuracy < bestAccuracy) {
-                  bestAccuracy = pos.coords.accuracy;
-                  bestLat = pos.coords.latitude;
-                  bestLng = pos.coords.longitude;
-              }
-              msgBox.innerHTML = `<span style='color:#3498db;'>Refining Accuracy: ${Math.round(bestAccuracy)} meters... (Attempt ${attemptCount}) ⏳</span>`;
-          },
-          (err) => {
-              msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error! Try standing outside.</span>";
-          },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-      );
+      for(let i=1; i<=daysInMonth; i++) {
+        let dStr = year + "-" + ("0"+(month+1)).slice(-2) + "-" + ("0"+i).slice(-2); 
+        let dayRecords = globalCalData.filter(r => r.date === dStr);
+        let statusClass = dayRecords.length > 0 ? "present" : "absent";
+        if(dayRecords.length > 0) presentCount++;
+        
+        let box = document.createElement("div"); box.className = "day " + statusClass; box.innerText = i;
+        box.onclick = function() {
+          if(dayRecords.length > 0) {
+            let info = `Date: ${("0"+i).slice(-2)}/${("0"+(month+1)).slice(-2)}/${year}<br><br>`;
+            dayRecords.forEach(r => { 
+              let color = r.type === 'IN' ? 'green' : 'red';
+              info += `<span style="color:${color};">[${r.type}]</span> at ${r.time}<br>`; 
+            });
+            document.getElementById("calDetails").innerHTML = info;
+          } else document.getElementById("calDetails").innerHTML = `Absent on this day.`;
+        };
+        calDiv.appendChild(box);
+      }
+      
+      let today = new Date();
+      let daysPassed = (today.getMonth() === month && today.getFullYear() === year) ? today.getDate() : daysInMonth;
+      let absentCount = daysPassed - presentCount;
+      let percent = daysPassed > 0 ? Math.round((presentCount / daysPassed) * 100) : 0;
+      
+      document.getElementById("calStats").innerHTML = `<span style='color:#27ae60'>Present: ${presentCount}</span> | <span style='color:#c0392b'>Absent: ${absentCount}</span> | <span style='color:#0f131c'>Percentage: ${percent}%</span>`;
+    }
 
-      setTimeout(() => {
-          navigator.geolocation.clearWatch(geoWatchId); 
+    // 🚀 ULTRA-ACCURATE ADMIN GEOFENCE LOCK (Warm-up Logic)
+    function setLibraryLocation() {
+      let msgBox = document.getElementById("locSaveMsg");
+      msgBox.innerHTML = "<span style='color:#0f131c;'>Warming up GPS hardware... Please wait (10s) 🛰️</span>";
+      
+      if(!navigator.geolocation) {
+          msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Permission Denied!</span>";
+          return;
+      }
 
-          if (bestLat !== 0 && bestLng !== 0) {
-              msgBox.innerHTML = `<span style='color:#0f131c;'>Saving Location with ${Math.round(bestAccuracy)}m Accuracy...</span>`;
-              
-              callBackend("saveLibraryLocation", { lat: bestLat, lng: bestLng }, res => { 
-                  if(res.success) {
-                      msgBox.innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>"; 
-                  } else {
-                      msgBox.innerHTML = "<span style='color:#c0392b;'>Backend Error: " + res.message + " ❌</span>";
-                  }
-              });
-          } else {
-              msgBox.innerHTML = "<span style='color:#c0392b;'>Location lock failed! Check your GPS. ❌</span>";
-          }
-      }, 7000); 
-    }
+      let bestAccuracy = 9999;
+      let bestLat = 0, bestLng = 0;
+      let attemptCount = 0;
 
-    function refreshStudentData() {
-      let btn = document.getElementById("stuRefreshBtn");
-      btn.innerText = "↻ Refreshing...";
-      let savedId = localStorage.getItem("libStuId");
-      let savedMob = localStorage.getItem("libStuMob");
-      
-      if(!savedId || !savedMob) { btn.innerText = "↻ Refresh"; return; }
+      let geoWatchId = navigator.geolocation.watchPosition(
+          (pos) => {
+              attemptCount++;
+              if (pos.coords.accuracy < bestAccuracy) {
+                  bestAccuracy = pos.coords.accuracy;
+                  bestLat = pos.coords.latitude;
+                  bestLng = pos.coords.longitude;
+              }
+              msgBox.innerHTML = `<span style='color:#3498db;'>Refining Accuracy: ${Math.round(bestAccuracy)} meters... (Attempt ${attemptCount}) ⏳</span>`;
+          },
+          (err) => {
+              msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error! Try standing outside.</span>";
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+      );
 
-      callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
-          if(res.success) {
-              if(!res.active) { show('inactiveScreen'); } 
-              else {
-                  localStorage.setItem("libStuData", JSON.stringify(res));
-                  setupStudentDashboard(res);
-                  setTimeout(() => { btn.innerText = "↻ Refresh"; }, 500);
-              }
-          } else { logout(); }
-      }, err => { console.error("Refresh Error: ", err); btn.innerText = "↻ Refresh"; });
-    }
+      setTimeout(() => {
+          navigator.geolocation.clearWatch(geoWatchId); 
 
-    function refreshAdminData() {
-      let btn = document.getElementById("adminRefreshBtn");
-      btn.innerText = "↻ Refreshing...";
-      if(!document.getElementById("tabAtt").classList.contains("hidden")) { fetchDailyAttendance(); } 
-      else if(!document.getElementById("tabChart").classList.contains("hidden")) { fetchCalendar(); }
-      setTimeout(() => { btn.innerText = "↻ Refresh"; }, 1500); 
-    }
+          if (bestLat !== 0 && bestLng !== 0) {
+              msgBox.innerHTML = `<span style='color:#0f131c;'>Saving Location with ${Math.round(bestAccuracy)}m Accuracy...</span>`;
+              
+              callBackend("saveLibraryLocation", { lat: bestLat, lng: bestLng }, res => { 
+                  if(res.success) {
+                      msgBox.innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>"; 
+                  } else {
+                      msgBox.innerHTML = "<span style='color:#c0392b;'>Backend Error: " + res.message + " ❌</span>";
+                  }
+              });
+          } else {
+              msgBox.innerHTML = "<span style='color:#c0392b;'>Location lock failed! Check your GPS. ❌</span>";
+          }
+      }, 7000); 
+    }
 
-    function retryConnection() {
-      let btn = document.getElementById("reloadBtn");
-      btn.innerText = "Checking... ⏳";
-      
-      fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' })
-      .then(() => {
-          btn.innerText = "Connecting... 🚀";
-          window.location.reload();
-      })
-      .catch(() => {
-          btn.innerText = "Still Offline! ❌";
-          btn.style.background = "#c0392b"; 
-          setTimeout(() => { 
-              btn.innerText = "↻ Reload"; 
-              btn.style.background = "#0f131c"; 
-          }, 2000);
-      });
-    }
+    function refreshStudentData() {
+      let btn = document.getElementById("stuRefreshBtn");
+      btn.innerText = "↻ Refreshing...";
+      let savedId = localStorage.getItem("libStuId");
+      let savedMob = localStorage.getItem("libStuMob");
+      
+      if(!savedId || !savedMob) { btn.innerText = "↻ Refresh"; return; }
 
-    function markAdminManualAttendance() {
-      let val = document.getElementById("manualAttInput").value.trim();
-      if(!val) { alert("Please enter Student ID or Mobile Number!"); return; }
-      
-      let msgBox = document.getElementById("manualAttMsg");
-      msgBox.innerHTML = "<span style='color:#0f131c;'>Verifying & Marking Attendance... ⏳</span>";
-      
-      callBackend("adminMarkAttendance", {searchValue: val}, res => {
-        if(res.success) {
-          msgBox.innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
-          document.getElementById("manualAttInput").value = "";
-          
-          let dateInput = document.getElementById("attDate");
-          if(dateInput && dateInput.value === new Date().toISOString().split('T')[0]) {
-             fetchDailyAttendance();
-          }
-        } else {
-          msgBox.innerHTML = "<span style='color:#c0392b;'>" + res.message + " ❌</span>";
-        }
-      });
-    }
+      callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
+          if(res.success) {
+              if(!res.active) { show('inactiveScreen'); } 
+              else {
+                  localStorage.setItem("libStuData", JSON.stringify(res));
+                  setupStudentDashboard(res);
+                  setTimeout(() => { btn.innerText = "↻ Refresh"; }, 500);
+              }
+          } else { logout(); }
+      }, err => { console.error("Refresh Error: ", err); btn.innerText = "↻ Refresh"; });
+    }
 
-  </script>
+    function refreshAdminData() {
+      let btn = document.getElementById("adminRefreshBtn");
+      btn.innerText = "↻ Refreshing...";
+      if(!document.getElementById("tabAtt").classList.contains("hidden")) { fetchDailyAttendance(); } 
+      else if(!document.getElementById("tabChart").classList.contains("hidden")) { fetchCalendar(); }
+      setTimeout(() => { btn.innerText = "↻ Refresh"; }, 1500); 
+    }
+
+    function retryConnection() {
+      let btn = document.getElementById("reloadBtn");
+      btn.innerText = "Reloading... ⏳";
+      setTimeout(() => {
+          window.location.reload(); 
+      }, 500);
+    }
+
+    // 🚀 ADMIN MANUAL ATTENDANCE FUNCTION
+    function markAdminManualAttendance() {
+      let val = document.getElementById("manualAttInput").value.trim();
+      if(!val) { alert("Please enter Student ID or Mobile Number!"); return; }
+      
+      let msgBox = document.getElementById("manualAttMsg");
+      msgBox.innerHTML = "<span style='color:#0f131c;'>Verifying & Marking Attendance... ⏳</span>";
+      
+      callBackend("adminMarkAttendance", {searchValue: val}, res => {
+        if(res.success) {
+          msgBox.innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
+          document.getElementById("manualAttInput").value = "";
+          
+          let dateInput = document.getElementById("attDate");
+          if(dateInput && dateInput.value === new Date().toISOString().split('T')[0]) {
+             fetchDailyAttendance();
+          }
+        } else {
+          msgBox.innerHTML = "<span style='color:#c0392b;'>" + res.message + " ❌</span>";
+        }
+      });
+    }
+
+  </script>
 </body>
 </html>
