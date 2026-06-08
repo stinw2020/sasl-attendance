@@ -356,7 +356,7 @@
 
     <div id="tabLoc" class="hidden">
       <h3>Set Library Geofence</h3>
-      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 15 meters of this exact point to scan.</p> 
+      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 10 meters of this exact point to scan.</p> 
       <button class="btn-green" style="padding:16px;" onclick="setLibraryLocation()">Lock Current Location</button>
       <div id="locSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
       
@@ -374,7 +374,7 @@
     // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
     const API_URL = "https://script.google.com/macros/s/AKfycbx4kbfaVHrqFsSO5v41RNcZPP0arAbM_oLxW0t5HiggjODp8XCjjpPkPGyHNK_FjTNy/exec";
 
-    const ALLOWED_RADIUS = 15;
+    const ALLOWED_RADIUS = 10;
     let studentData = null;
     let libLat = 0, libLng = 0;
     let currentSecretQR = "";
@@ -735,12 +735,12 @@ function resetScannerUI() {
         
         if(dist <= ALLOWED_RADIUS) {
             msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
-            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
+            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <10m"}, res => {
               if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + "</span>";
               else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>" + res.message + "</span>";
             });
         } else {
-            msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Range: 15m)</span>";
+            msgBox.innerHTML = "<span style='color:#c0392b;'>Error: You are " + Math.round(dist) + " meters away! (Range: 10m)</span>";
         }
       }, err => {
         msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error: Signal weak ya location turned off hai!</span>";
