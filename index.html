@@ -560,11 +560,6 @@ function resetScannerUI() {
   if(html5QrCode) html5QrCode.stop().catch(err => console.log(err));
 }
 
-  
-  // HTML se sab kuch uda do
-  readerDiv.style.display = "none";
-  readerDiv.innerHTML = ""; 
-}
     function verifyLocationAndMark(decodedText, retryCount = 0) {
       if (decodedText.trim() !== currentSecretQR) {
          document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; 
