@@ -526,38 +526,42 @@
     } 
 
     function startScanner() {
-      let readerDiv = document.getElementById("reader");
-      readerDiv.style.display = "flex";
-      
-      let closeBtn = document.createElement("button");
-      closeBtn.innerText = "✕ CLOSE";
-      closeBtn.className = "close-scanner-btn";
-      closeBtn.onclick = () => resetScannerUI();
-      readerDiv.appendChild(closeBtn);
-      
-      if(!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-      
-      html5QrCode.start(
-          { facingMode: "environment" }, 
-          { fps: 10, qrbox: { width: 250, height: 250 } }, 
-          (decodedText) => {
-              resetScannerUI();
-              verifyLocationAndMark(decodedText); 
-          }
-      ).catch(err => {
-          alert("Camera Permission Denied!");
+  let readerDiv = document.getElementById("reader");
+  readerDiv.style.display = "flex";
+  
+  // Close Button Create Karein
+  let closeBtn = document.createElement("button");
+  closeBtn.innerText = "✕ CLOSE";
+  closeBtn.className = "close-scanner-btn";
+  closeBtn.onclick = () => resetScannerUI();
+  readerDiv.appendChild(closeBtn);
+  
+  if(!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+  
+  html5QrCode.start(
+      { facingMode: "environment" }, 
+      { fps: 10, qrbox: { width: 250, height: 250 } }, 
+      (decodedText) => {
           resetScannerUI();
-      });
-    }
+          verifyLocationAndMark(decodedText); 
+      }
+  ).catch(err => {
+      alert("Camera Permission Denied!");
+      resetScannerUI();
+  });
+}
 
     function resetScannerUI() {
-      let readerDiv = document.getElementById("reader");
-      readerDiv.style.display = "none";
-      readerDiv.innerHTML = ""; 
-      
-      if(html5QrCode) html5QrCode.stop().catch(err => console.log(err));
-    }
-
+  let readerDiv = document.getElementById("reader");
+  readerDiv.style.display = "none";
+  
+  // 🚀 FIX: Saare elements (button aur video) ko saaf kar do
+  readerDiv.innerHTML = ""; 
+  
+  if(html5QrCode) {
+      html5QrCode.stop().catch(err => console.log(err));
+  }
+}
     function verifyLocationAndMark(decodedText, retryCount = 0) {
       if (decodedText.trim() !== currentSecretQR) {
          document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; 
