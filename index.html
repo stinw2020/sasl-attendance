@@ -286,19 +286,34 @@
       <div id="qrSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
     </div>
 
-    <div id="tabSec" class="hidden">
-       <h3 style="margin-top:0; color:#2c3e50;">Manage User Credentials</h3>
-       <label>Select Role:</label>
-       <select id="targetRole">
-         <option value="Student">Student</option>
-         <option value="Admin">Admin</option>
-       </select>
-       <input type="text" id="targetOldUser" placeholder="Current Username">
-       <input type="text" id="targetNewUser" placeholder="New Username">
-       <input type="text" id="targetNewPass" placeholder="New Password">
-       <button onclick="adminChangeCred()" class="btn-green">Update User/Admin</button>
-       <div id="adminCredMsg" style="margin-top:10px; font-weight:bold; text-align:center;"></div>
-    </div>
+    function adminChangeCred() {
+    let role = document.getElementById("targetRole").value;
+    let oldU = document.getElementById("targetOldUser").value.trim();
+    let newU = document.getElementById("targetNewUser").value.trim();
+    let newP = document.getElementById("targetNewPass").value.trim();
+    let msg = document.getElementById("adminCredMsg");
+
+    if(!oldU || !newU || !newP) { alert("Sari details bharein!"); return; }
+
+    msg.innerHTML = "Updating... ⏳";
+    callBackend("adminChangeCredentials", {targetRole: role, targetUser: oldU, newUser: newU, newPass: newP}, res => {
+        msg.innerHTML = res.success ? "<span style='color:green;'>"+res.message+"</span>" : "<span style='color:red;'>"+res.message+"</span>";
+    });
+}
+   
+   <label>Select Role:</label>
+   <select id="targetRole">
+     <option value="Student">Student</option>
+     <option value="Admin">Admin</option>
+   </select>
+   
+   <input type="text" id="targetOldUser" placeholder="Current Username">
+   <input type="text" id="targetNewUser" placeholder="New Username">
+   <input type="password" id="targetNewPass" placeholder="New Password">
+   
+   <button onclick="adminChangeCred()" class="btn-green">Update Credentials</button>
+   <div id="adminCredMsg" style="margin-top:10px; font-weight:bold; text-align:center;"></div>
+</div>
   
   <script>
     // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
