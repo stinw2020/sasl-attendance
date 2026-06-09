@@ -623,29 +623,50 @@
       if (goBack && location.hash === "#scanner") { history.back(); }
     }
 
+    // 🚀 SMART STUDENT SCANNER WITH ACCURACY FILTER
     function verifyLocationAndMark(decodedText, retryCount = 0) {
       if (decodedText.trim() !== currentSecretQR) {
-         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code!</span>"; return; 
+         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; return; 
       }
       let msgBox = document.getElementById("attMsg");
-      if (retryCount === 0) { msgBox.innerHTML = "<span style='color:#0f131c;'>Optimizing GPS... 🛰️</span>"; } 
-      else { msgBox.innerHTML = "<span style='color:#3498db;'>Fixing GPS Drift... ⏳</span>"; }
+      
+      if (retryCount === 0) { msgBox.innerHTML = "<span style='color:#0f131c;'>Checking Location Accuracy... 🛰️</span>"; } 
+      else { msgBox.innerHTML = "<span style='color:#3498db;'>Fixing GPS Drift (Attempt " + (retryCount) + "/4)... ⏳</span>"; }
+      
       if(!navigator.geolocation) { msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; return; }
       
       navigator.geolocation.getCurrentPosition(pos => {
+        let accuracy = pos.coords.accuracy; // GPS ka confidence (in meters)
+        
+        // 🚀 THE FILTER: Agar phone 30m se zyada confuse hai, toh dobara try karo
+        if (accuracy > 30 && retryCount < 4) {
+            setTimeout(() => { verifyLocationAndMark(decodedText, retryCount + 1); }, 1500);
+            return;
+        }
+
         let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
+        
         if(dist <= 15) {
-            msgBox.innerHTML = "<span style='color:#0f131c;'>Marking Attendance...</span>";
-            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m"}, res => {
+            msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
+            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <15m (Acc: "+Math.round(accuracy)+"m)"}, res => {
               if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
               else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Error: " + res.message + "</span>";
             });
-        } else if (retryCount < 3) { setTimeout(() => { verifyLocationAndMark(decodedText, retryCount + 1); }, 1200);
-        } else { msgBox.innerHTML = "<span style='color:#c0392b;'>Range Error: Allowed 15m.</span>"; }
+        } 
+        else if (retryCount < 4) { 
+            setTimeout(() => { verifyLocationAndMark(decodedText, retryCount + 1); }, 1500);
+        } 
+        else { 
+            msgBox.innerHTML = "<span style='color:#c0392b;'>Aap library se " + Math.round(dist) + " meter door hain! (Allowed: 15m). Bahar aakar dubara scan karein.</span>"; 
+        }
       }, err => {
-        if (retryCount < 3) { setTimeout(() => { verifyLocationAndMark(decodedText, retryCount + 1); }, 1200); } 
-        else { msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error!</span>"; }
-      }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }); 
+        if (retryCount < 4) { 
+            setTimeout(() => { verifyLocationAndMark(decodedText, retryCount + 1); }, 1500); 
+        } 
+        else { 
+            msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error! Kripya Google Maps khol kar apni location refresh karein.</span>"; 
+        }
+      }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }); 
     }
 
     function saveAdminQRCode() {
@@ -735,24 +756,51 @@
       document.getElementById("calStats").innerHTML = `<span style='color:#27ae60'>Present: ${presentCount}</span> | <span style='color:#c0392b'>Absent: ${absentCount}</span> | <span style='color:#0f131c'>Percentage: ${percent}%</span>`;
     }
 
+    // 🚀 ULTRA-ACCURATE ADMIN GEOFENCE LOCK
     function setLibraryLocation() {
-      let msgBox = document.getElementById("locSaveMsg"); msgBox.innerHTML = "<span style='color:#0f131c;'>Warming up GPS hardware... Please wait (10s) 🛰️</span>";
+      let msgBox = document.getElementById("locSaveMsg"); 
+      msgBox.innerHTML = "<span style='color:#0f131c;'>Connecting to Satellites... Please stand still (10s) 🛰️</span>";
+      
       if(!navigator.geolocation) { msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Permission Denied!</span>"; return; }
+      
       let bestAccuracy = 9999; let bestLat = 0, bestLng = 0; let attemptCount = 0;
+      
       let geoWatchId = navigator.geolocation.watchPosition(
-          (pos) => { attemptCount++; if (pos.coords.accuracy < bestAccuracy) { bestAccuracy = pos.coords.accuracy; bestLat = pos.coords.latitude; bestLng = pos.coords.longitude; }
-              msgBox.innerHTML = `<span style='color:#3498db;'>Refining Accuracy: ${Math.round(bestAccuracy)} meters... (Attempt ${attemptCount}) ⏳</span>`;
-          }, (err) => { msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error! Try standing outside.</span>"; }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+          (pos) => { 
+              attemptCount++; 
+              // Agar accuracy (error in meters) purani wali se kam hai, toh naya data save karo
+              if (pos.coords.accuracy < bestAccuracy) { 
+                  bestAccuracy = pos.coords.accuracy; 
+                  bestLat = pos.coords.latitude; 
+                  bestLng = pos.coords.longitude; 
+              }
+              msgBox.innerHTML = `<span style='color:#3498db;'>Refining Signal: Accuracy ${Math.round(bestAccuracy)}m... (Attempt ${attemptCount}) ⏳</span>`;
+          }, 
+          (err) => { msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error! Try standing outside.</span>"; }, 
+          // 🚀 FIX: maximumAge: 0 forces phone to not use cached location
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
       );
-      setTimeout(() => { navigator.geolocation.clearWatch(geoWatchId); 
+
+      // 8 second baad result process karenge
+      setTimeout(() => { 
+          navigator.geolocation.clearWatch(geoWatchId); 
+          
+          // Agar accuracy 30 meter se zyada kharab hai, toh save mat karo!
+          if (bestAccuracy > 30) {
+              msgBox.innerHTML = `<span style='color:#c0392b;'>Signal too weak (Error: ${Math.round(bestAccuracy)}m). Bahar khule aasmaan me try karein. ❌</span>`;
+              return;
+          }
+
           if (bestLat !== 0 && bestLng !== 0) {
-              msgBox.innerHTML = `<span style='color:#0f131c;'>Saving Location with ${Math.round(bestAccuracy)}m Accuracy...</span>`;
+              msgBox.innerHTML = `<span style='color:#0f131c;'>Saving Pin-Point Location (Accuracy: ${Math.round(bestAccuracy)}m)...</span>`;
               callBackend("saveLibraryLocation", { lat: bestLat, lng: bestLng }, res => { 
                   if(res.success) { msgBox.innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>"; } 
                   else { msgBox.innerHTML = "<span style='color:#c0392b;'>Backend Error: " + res.message + " ❌</span>"; }
               });
-          } else { msgBox.innerHTML = "<span style='color:#c0392b;'>Location lock failed! Check your GPS. ❌</span>"; }
-      }, 7000); 
+          } else { 
+              msgBox.innerHTML = "<span style='color:#c0392b;'>Location lock failed! Check your GPS. ❌</span>"; 
+          }
+      }, 8000); 
     }
 
     function refreshStudentData() {
