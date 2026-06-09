@@ -594,8 +594,13 @@
             document.getElementById("noticeList").innerHTML = nHtml || "No active notices.";
           } catch(e) { }
       });
-    } 
 
+      // 🚀 GPS PRE-WARMING HACK (Location fast lock karne ke liye)
+      // Jaise hi dashboard load hoga, background me GPS silently on ho jayega
+      if(navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, {enableHighAccuracy: true, maximumAge: 3000});
+      }
+    }
     function startScanner() {
       let readerDiv = document.getElementById("reader");
       readerDiv.style.display = "block"; 
