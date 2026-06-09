@@ -37,6 +37,7 @@
   <title>SASL Attendance Portal</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
+    /* Offline Screen */
     #offlineScreen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: #f0f2f5; z-index: 9999999; display: none; 
@@ -61,6 +62,7 @@
     #reader video::-webkit-media-controls-play-button { display: none !important; }
     #reader video::-webkit-media-controls-start-playback-button { display: none !important; }
 
+    /* General UI */
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background: #f0f2f5; margin: 0; padding: 15px 10px; }
     
@@ -108,21 +110,6 @@
     <button id="reloadBtn" onclick="retryConnection()">↻ Reload</button>
   </div>
 
-  <div id="credModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999999; justify-content:center; align-items:center; padding:20px;">
-    <div class="card" style="max-width:350px; position:relative; margin:0;">
-      <button onclick="closeCredModal()" style="position:absolute; top:10px; right:15px; background:none; color:#c0392b; width:auto; padding:0; font-size:20px;">✖</button>
-      <h3 style="margin-top:0;">Change Login Details</h3>
-      <p style="font-size:13px; color:#7f8c8d; line-height:1.4;">Apna naya Username aur Password set karein. Validation ke liye current password daalna zaroori hai.</p>
-      
-      <input type="password" id="credOldPass" placeholder="Current Password">
-      <input type="text" id="credNewUser" placeholder="New Username">
-      <input type="password" id="credNewPass" placeholder="New Password">
-      <button onclick="submitCredentialsChange()" class="btn-green">Update Details</button>
-      
-      <div id="credMsg" style="margin-top:10px; font-weight:bold; font-size:14px; text-align:center;"></div>
-    </div>
-  </div>
-
   <div id="pinScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f131c; color: white; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; padding: 20px;">
     <h2 style="margin-bottom:10px;">Admin Security PIN</h2>
     <p style="color:#7f8c8d; margin-bottom:20px;">Enter PIN to unlock dashboard</p>
@@ -167,7 +154,6 @@
   <div id="linkStudentScreen" class="card hidden">
     <h2 style="text-align:center; color:#27ae60; margin-top:0;">Link Profile</h2>
     <p style="text-align:center; font-size:14px; color:#7f8c8d; line-height:1.5;">Please enter your LMS Student ID and Mobile Number to load your dashboard.</p>
-    
     <input type="text" id="stuIdInput" placeholder="Enter Student ID (e.g. ST001)">
     <input type="number" id="stuMobInput" placeholder="Enter Mobile No">
     <button onclick="linkStudentDetails()" class="btn-green">Load Dashboard</button>
@@ -216,6 +202,7 @@
     <hr>
     <h3 style="margin-bottom:10px; font-size:18px;">Notice Board</h3>
     <div id="noticeList" style="background:#fff3cd; padding:15px; border-radius:8px; font-size:14px; color:#856404; line-height:1.6;"></div>
+  </div>
 
   <div id="adminDashboard" class="card admin-card hidden">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -229,7 +216,8 @@
       <div class="tab" onclick="switchTab('tabManual', this)">Manual Att.</div>
       <div class="tab" onclick="switchTab('tabChart', this)">Calendar</div>
       <div class="tab" onclick="switchTab('tabLoc', this)">Location</div>
-      <div class="tab" onclick="switchTab('tabSec', this)">Security</div> </div>
+      <div class="tab" onclick="switchTab('tabSec', this)">Security</div>
+    </div>
 
     <div id="tabNotice">
       <h3 style="margin-top:0;">Publish Global Notice</h3>
@@ -286,34 +274,24 @@
       <div id="qrSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
     </div>
 
-    function adminChangeCred() {
-    let role = document.getElementById("targetRole").value;
-    let oldU = document.getElementById("targetOldUser").value.trim();
-    let newU = document.getElementById("targetNewUser").value.trim();
-    let newP = document.getElementById("targetNewPass").value.trim();
-    let msg = document.getElementById("adminCredMsg");
-
-    if(!oldU || !newU || !newP) { alert("Sari details bharein!"); return; }
-
-    msg.innerHTML = "Updating... ⏳";
-    callBackend("adminChangeCredentials", {targetRole: role, targetUser: oldU, newUser: newU, newPass: newP}, res => {
-        msg.innerHTML = res.success ? "<span style='color:green;'>"+res.message+"</span>" : "<span style='color:red;'>"+res.message+"</span>";
-    });
-}
-   
-   <label>Select Role:</label>
-   <select id="targetRole">
-     <option value="Student">Student</option>
-     <option value="Admin">Admin</option>
-   </select>
-   
-   <input type="text" id="targetOldUser" placeholder="Current Username">
-   <input type="text" id="targetNewUser" placeholder="New Username">
-   <input type="password" id="targetNewPass" placeholder="New Password">
-   
-   <button onclick="adminChangeCred()" class="btn-green">Update Credentials</button>
-   <div id="adminCredMsg" style="margin-top:10px; font-weight:bold; text-align:center;"></div>
-</div>
+    <div id="tabSec" class="hidden">
+       <h3 style="margin-top:0; color:#2c3e50;">Manage User Credentials</h3>
+       <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Student ya Admin ka login ID/Password yahan se change karein.</p>
+       
+       <label style="font-size:14px; font-weight:bold; display:block; text-align:left;">Select Role:</label>
+       <select id="targetRole">
+         <option value="Student">Student</option>
+         <option value="Admin">Admin</option>
+       </select>
+       
+       <input type="text" id="targetOldUser" placeholder="Current Username">
+       <input type="text" id="targetNewUser" placeholder="New Username">
+       <input type="text" id="targetNewPass" placeholder="New Password">
+       
+       <button onclick="adminChangeCred()" class="btn-green">Update Credentials</button>
+       <div id="adminCredMsg" style="margin-top:15px; font-weight:bold; font-size:15px; text-align:center;"></div>
+    </div>
+  </div>
   
   <script>
     // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
@@ -326,13 +304,15 @@
     let globalCalData = [];
     let html5QrCode = null;
 
+    // 🚀 BACK BUTTON (POPSTATE) LOGIC FOR SCANNER
     window.addEventListener("popstate", function(event) {
         if (location.hash !== "#scanner") { resetScannerUI(false); }
     });
 
+    // 🚀 SMART API FETCH WITH FAKE ERROR FIX
     function callBackend(action, data, onSuccess, onFailure) {
       if (!navigator.onLine) {
-          show('offlineScreen');
+          document.getElementById('offlineScreen').style.display = 'flex';
           if(onFailure) onFailure(new Error("Offline"));
           return;
       }
@@ -354,7 +334,7 @@
       })
       .catch(err => {
           console.error("Fetch Error:", err);
-          if (!navigator.onLine) { show('offlineScreen'); } 
+          if (!navigator.onLine) { document.getElementById('offlineScreen').style.display = 'flex'; } 
           else { alert("Network Error: " + err.message); }
           if(onFailure) onFailure(err);
       });
@@ -368,8 +348,9 @@
       }
     });
 
+    // 🚀 Hiding Logic Fix (Taki Admin Panel Blank Na Ho)
     function showPinScreen() {
-      document.querySelectorAll('body > div:not(script):not(#pinScreen):not(#credModal)').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('body > div:not(script):not(#pinScreen):not(#offlineScreen)').forEach(el => el.classList.add('hidden'));
       document.getElementById("pinScreen").style.display = "flex";
       document.getElementById("pin1").value = ""; document.getElementById("pin2").value = "";
       document.getElementById("pin3").value = ""; document.getElementById("pin4").value = "";
@@ -432,7 +413,7 @@
 
     window.onload = function() {
       try {
-        if (!navigator.onLine) { show('offlineScreen'); return; }
+        if (!navigator.onLine) { document.getElementById('offlineScreen').style.display = 'flex'; return; }
 
         let savedRole = localStorage.getItem("libRole");
         let savedId = localStorage.getItem("libStuId");
@@ -465,7 +446,7 @@
               } else { logout(); }
           }, err => { 
               console.error("Server Error: ", err); 
-              if (!navigator.onLine) show('offlineScreen');
+              if (!navigator.onLine) document.getElementById('offlineScreen').style.display = 'flex';
           });
         } else {
           show('loginScreen');
@@ -474,7 +455,7 @@
     };
 
     function show(id) { 
-      document.querySelectorAll('body > div:not(script):not(#pinScreen):not(#credModal)').forEach(el => el.classList.add('hidden')); 
+      document.querySelectorAll('body > div:not(script):not(#pinScreen):not(#offlineScreen)').forEach(el => el.classList.add('hidden')); 
       let target = document.getElementById(id);
       if(target) target.classList.remove('hidden'); 
     }
@@ -514,7 +495,6 @@
         if(res.success) {
           msg.innerText = "";
           localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("loggedUser", u); // Save Username for Changing later
           
           if(r === "Admin") {
             localStorage.setItem("libRole", "Admin"); 
@@ -797,48 +777,30 @@
       });
     }
 
-    // ==========================================
-    // 🚀 NEW: CHANGE LOGIN CREDENTIALS LOGIC
-    // ==========================================
-    function openCredModal() {
-        document.getElementById("credModal").style.display = "flex";
-        document.getElementById("credOldPass").value = "";
-        document.getElementById("credNewUser").value = localStorage.getItem("loggedUser") || "";
-        document.getElementById("credNewPass").value = "";
-        document.getElementById("credMsg").innerText = "";
-    }
+    // 🚀 NEW: ADMIN CHANGE CREDENTIALS LOGIC
+    function adminChangeCred() {
+        let role = document.getElementById("targetRole").value;
+        let oldU = document.getElementById("targetOldUser").value.trim();
+        let newU = document.getElementById("targetNewUser").value.trim();
+        let newP = document.getElementById("targetNewPass").value.trim();
+        let msg = document.getElementById("adminCredMsg");
 
-    function closeCredModal() {
-        document.getElementById("credModal").style.display = "none";
-    }
+        if(!oldU || !newU || !newP) { alert("Sari details bharein!"); return; }
 
-    function submitCredentialsChange() {
-        let oldP = document.getElementById("credOldPass").value.trim();
-        let newU = document.getElementById("credNewUser").value.trim();
-        let newP = document.getElementById("credNewPass").value.trim();
-        let msgBox = document.getElementById("credMsg");
-
-        if(!oldP || !newU || !newP) {
-            msgBox.innerHTML = "<span style='color:#c0392b;'>Bhai saare details bharna zaroori hai!</span>";
-            return;
-        }
-
-        let role = localStorage.getItem("libRole");
-        let oldU = localStorage.getItem("loggedUser");
-
-        msgBox.innerHTML = "<span style='color:#3498db;'>Updating Details... ⏳</span>";
-
-        callBackend("changeCredentials", {role: role, oldUser: oldU, oldPass: oldP, newUser: newU, newPass: newP}, res => {
+        msg.innerHTML = "<span style='color:#3498db;'>Updating... ⏳</span>";
+        
+        callBackend("adminChangeCredentials", {targetRole: role, targetUser: oldU, newUser: newU, newPass: newP}, res => {
             if(res.success) {
-                msgBox.innerHTML = "<span style='color:#27ae60; font-size:15px;'>" + res.message + " ✅</span>";
-                localStorage.setItem("loggedUser", newU); // Naya username save karlo
-                setTimeout(closeCredModal, 2000);
+                msg.innerHTML = "<span style='color:#27ae60; font-size:15px;'>" + res.message + " ✅</span>";
+                document.getElementById("targetOldUser").value = "";
+                document.getElementById("targetNewUser").value = "";
+                document.getElementById("targetNewPass").value = "";
             } else {
-                msgBox.innerHTML = "<span style='color:#c0392b;'>" + res.message + " ❌</span>";
+                msg.innerHTML = "<span style='color:#c0392b;'>" + res.message + " ❌</span>";
             }
         });
     }
-    
+
   </script>
 </body>
 </html>
