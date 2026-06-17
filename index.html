@@ -196,13 +196,14 @@
     <h3 style="text-align:center; margin-bottom:10px; font-size:18px;">Smart Attendance</h3>
     <div id="attMsg" style="text-align:center; font-weight:bold; margin-bottom:10px; font-size:14px;"></div>
     
-    <div id="reader" style="display:none; margin-bottom:15px; border-radius:8px; overflow:hidden;"></div>
     <button id="scanBtn" class="btn-green" style="padding:16px; font-size:16px;" onclick="startScanner()">SCAN QR CODE</button>
 
     <hr>
     <h3 style="margin-bottom:10px; font-size:18px;">Notice Board</h3>
     <div id="noticeList" style="background:#fff3cd; padding:15px; border-radius:8px; font-size:14px; color:#856404; line-height:1.6;"></div>
   </div>
+
+  <div id="reader"></div>
 
   <div id="adminDashboard" class="card admin-card hidden">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -258,7 +259,6 @@
       <button onclick="fetchCalendar()">Generate Calendar</button>
       <div id="calendarDiv" class="calendar"></div>
       <div id="calStats" style="margin-top:20px; font-weight:bold; font-size:15px; text-align:center; background:#f8f9fa; padding:10px; border-radius:8px;"></div>
-      <div id="calDetails" style="margin-top:15px; text-align:center; color:#0f131c; font-weight:bold; line-height:1.6;"></div>
     </div>
 
     <div id="tabLoc" class="hidden">
@@ -294,22 +294,18 @@
   </div>
   
   <script>
-    // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
     const API_URL = "https://script.google.com/macros/s/AKfycbx4kbfaVHrqFsSO5v41RNcZPP0arAbM_oLxW0t5HiggjODp8XCjjpPkPGyHNK_FjTNy/exec";
 
     const ALLOWED_RADIUS = 50;
     let studentData = null;
     let libLat = 0, libLng = 0;
     let currentSecretQR = "";
-    let globalCalData = [];
     let html5QrCode = null;
 
-    // 🚀 BACK BUTTON (POPSTATE) LOGIC FOR SCANNER
     window.addEventListener("popstate", function(event) {
-        if (location.hash !== "#scanner") { resetScannerUI(false); }
+        if (location.hash !== "#scanner") { resetScannerUI(); }
     });
 
-    // 🚀 SMART API FETCH WITH FAKE ERROR FIX
     function callBackend(action, data, onSuccess, onFailure) {
       if (!navigator.onLine) {
           document.getElementById('offlineScreen').style.display = 'flex';
@@ -328,7 +324,7 @@
               if(onSuccess) onSuccess(res);
           } catch(e) {
               console.error("Backend Error Data:", text);
-              alert("Server Error: Backend se sahi data nahi aaya! Kripya Apna naya Google Script Deployment check karein.");
+              alert("Server Error: Backend se sahi data nahi aaya!");
               if(onFailure) onFailure(e);
           }
       })
@@ -348,7 +344,6 @@
       }
     });
 
-    // 🚀 Hiding Logic Fix (Taki Admin Panel Blank Na Ho)
     function showPinScreen() {
       document.querySelectorAll('body > div:not(script):not(#pinScreen):not(#offlineScreen)').forEach(el => el.classList.add('hidden'));
       document.getElementById("pinScreen").style.display = "flex";
@@ -392,7 +387,6 @@
       }, 400);
     }
 
-    // --- OFFLINE DETECTION ---
     window.addEventListener('offline', () => { document.getElementById('offlineScreen').style.display = 'flex'; });
     window.addEventListener('online', () => { window.location.reload(); });
 
@@ -446,7 +440,6 @@
               } else { logout(); }
           }, err => { 
               console.error("Server Error: ", err); 
-              if (!navigator.onLine) document.getElementById('offlineScreen').style.display = 'flex';
           });
         } else {
           show('loginScreen');
@@ -462,12 +455,6 @@
     
     function logout() { 
       localStorage.clear(); studentData = null; 
-      if(document.getElementById("loginUser")) document.getElementById("loginUser").value = ""; 
-      if(document.getElementById("loginPass")) document.getElementById("loginPass").value = "";
-      if(document.getElementById("adminUser")) document.getElementById("adminUser").value = ""; 
-      if(document.getElementById("adminPass")) document.getElementById("adminPass").value = "";
-      if(document.getElementById("stuIdInput")) document.getElementById("stuIdInput").value = "";
-      if(document.getElementById("stuMobInput")) document.getElementById("stuMobInput").value = "";
       show('loginScreen'); 
     }
 
@@ -595,265 +582,266 @@
           } catch(e) { }
       });
 
-      // 🚀 GPS PRE-WARMING HACK (Location fast lock karne ke liye)
-      // Jaise hi dashboard load hoga, background me GPS silently on ho jayega
       if(navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, {enableHighAccuracy: true, maximumAge: 3000});
       }
     }
+
+    // 🚀 FIXED & OPTIMIZED SCANNER FOR IOS AND ANDROID
     function startScanner() {
       let readerDiv = document.getElementById("reader");
       readerDiv.style.display = "block"; 
-      readerDiv.innerHTML = '<div id="qr-scanner-content" style="width: 100%; height: 100%;"></div>';
-      history.pushState({ scannerOpen: true }, "", "#scanner");
-      if(!html5QrCode) html5QrCode = new Html5Qrcode("qr-scanner-content");
-      html5QrCode.start(
-          { facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
-          (decodedText) => { resetScannerUI(true); verifyLocationAndMark(decodedText); }
-      ).catch(err => { alert("Camera Permission Denied!"); resetScannerUI(true); });
-    }
-
-    function resetScannerUI(goBack = false) {
-      let readerDiv = document.getElementById("reader");
-      readerDiv.style.display = "none";
-      if(html5QrCode) {
-          html5QrCode.stop().then(() => { html5QrCode.clear(); readerDiv.innerHTML = ""; html5QrCode = null; 
-          }).catch(err => { readerDiv.innerHTML = ""; html5QrCode = null; });
-      } else { readerDiv.innerHTML = ""; }
-      if (goBack && location.hash === "#scanner") { history.back(); }
-    }
-
-    // 🚀 SMART STUDENT SCANNER WITH ACCURACY FILTER
-    function verifyLocationAndMark(decodedText, retryCount = 0) {
-      if (decodedText.trim() !== currentSecretQR) {
-         document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Invalid QR Code! Kripya sahi QR scan karein.</span>"; return; 
+      document.getElementById("attMsg").innerText = "Opening Camera... Please Wait.";
+      
+      if (location.hash !== "#scanner") {
+         history.pushState({ scannerOpen: true }, "", "#scanner");
       }
-      let msgBox = document.getElementById("attMsg");
-      
-      if (retryCount === 0) { msgBox.innerHTML = "<span style='color:#0f131c;'>Checking Location Accuracy... 🛰️</span>"; } 
-      else { msgBox.innerHTML = "<span style='color:#3498db;'>Fixing GPS Drift (Attempt " + (retryCount) + "/4)... ⏳</span>"; }
-      
-      if(!navigator.geolocation) { msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Not Supported!</span>"; return; }
-      
-      navigator.geolocation.getCurrentPosition(pos => {
-        let accuracy = pos.coords.accuracy; // GPS ka confidence (in meters)
-        
-        // 🚀 THE FILTER: Agar phone 30m se zyada confuse hai, toh dobara try karo
-        if (accuracy > 30 && retryCount < 4) {
-            setTimeout(() => { verifyLocationAndMark(decodedText, retryCount + 1); }, 1500);
-            return;
-        }
 
-        let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
-        
-        if(dist <= 50) {
-            msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
-            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <50m (Acc: "+Math.round(accuracy)+"m)"}, res => {
-              if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
-              else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Error: " + res.message + "</span>";
-            });
-        } 
-        else if (retryCount < 4) { 
-            setTimeout(() => { verifyLocationAndMark(decodedText, retryCount + 1); }, 1500);
-        } 
-        else { 
-            msgBox.innerHTML = "<span style='color:#c0392b;'>Aap library se " + Math.round(dist) + " meter door hain! (Allowed: 50m). Bahar aakar dubara scan karein.</span>"; 
+      if(!html5QrCode) {
+         html5QrCode = new Html5Qrcode("reader");
+      }
+
+      const config = {
+        fps: 10,
+        qrbox: (width, height) => {
+          let minDim = Math.min(width, height);
+          return { width: minDim * 0.7, height: minDim * 0.7 };
+        },
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: false // 🔥 CRITICAL IOS BUG FIX: Disables broken native Safari scanning loop
         }
+      };
+
+      navigator.geolocation.getCurrentPosition(pos => {
+         let uLat = pos.coords.latitude;
+         let uLng = pos.coords.longitude;
+
+         html5QrCode.start(
+           { facingMode: "environment" },
+           config,
+           (decodedText) => {
+              document.getElementById("attMsg").innerText = "Verifying details...";
+              processScannedQR(decodedText, uLat, uLng);
+           },
+           (errorMessage) => { /* Quiet failure during live frames */ }
+         )
+         .then(() => {
+            document.getElementById("attMsg").innerText = "Align the QR code inside the viewfinder.";
+            // Extra safety patch to force inline camera play inside iOS WebViews/PWAs
+            let video = readerDiv.querySelector("video");
+            if(video) {
+               video.setAttribute("playsinline", "true");
+               video.setAttribute("webkit-playsinline", "true");
+               video.play().catch(() => {});
+            }
+         })
+         .catch(err => {
+            console.error(err);
+            document.getElementById("attMsg").innerText = "Camera Access Error! Please grant permission.";
+            resetScannerUI();
+         });
+
       }, err => {
-        if (retryCount < 4) { 
-            setTimeout(() => { verifyLocationAndMark(decodedText, retryCount + 1); }, 1500); 
-        } 
-        else { 
-            msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error! Kripya Google Maps khol kar apni location refresh karein.</span>"; 
-        }
-      }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }); 
+         document.getElementById("attMsg").innerText = "GPS Error! Turn on Location Services to scan.";
+         resetScannerUI();
+      }, { enableHighAccuracy: true });
     }
 
-    function saveAdminQRCode() {
-      let text = document.getElementById("adminQrInput").value.trim();
-      if(!text) { alert("Please enter QR text"); return; }
-      document.getElementById("qrSaveMsg").innerHTML = "<span style='color:#0f131c;'>Saving...</span>";
-      callBackend("saveSecretQRCode", {text: text}, res => {
-        document.getElementById("qrSaveMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>";
-        document.getElementById("adminQrInput").value = "";
+    function processScannedQR(scannedText, lat, lng) {
+      if (scannedText !== currentSecretQR) {
+        document.getElementById("attMsg").innerHTML = "<span style='color:red;'>Incorrect/Invalid QR Code!</span>";
+        resetScannerUI();
+        return;
+      }
+
+      // Check distance 
+      let dist = getDistance(lat, lng, libLat, libLng);
+      if (dist > ALLOWED_RADIUS) {
+        document.getElementById("attMsg").innerHTML = `<span style='color:red;'>Out of range! You are ${Math.round(dist)}m away from Library.</span>`;
+        resetScannerUI();
+        return;
+      }
+
+      document.getElementById("attMsg").innerText = "Submitting Attendance...";
+      callBackend("markStudentAttendance", { id: studentData.id, name: studentData.name, mobile: studentData.mobile }, res => {
+        if (res.success) {
+          document.getElementById("attMsg").innerHTML = `<span style='color:green;'>${res.message}</span>`;
+        } else {
+          document.getElementById("attMsg").innerHTML = `<span style='color:red;'>${res.message}</span>`;
+        }
+        resetScannerUI();
+      }, err => {
+         document.getElementById("attMsg").innerHTML = "<span style='color:red;'>Server/Network Timeout!</span>";
+         resetScannerUI();
       });
     }
 
+    function resetScannerUI() {
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => {
+          document.getElementById("reader").style.display = "none";
+        }).catch(err => console.error(err));
+      } else {
+        document.getElementById("reader").style.display = "none";
+      }
+      if (location.hash === "#scanner") { history.back(); }
+    }
+
     function getDistance(lat1, lon1, lat2, lon2) {
-      let R = 6371e3, p1 = lat1 * Math.PI/180, p2 = lat2 * Math.PI/180, dp = (lat2-lat1) * Math.PI/180, dl = (lon2-lon1) * Math.PI/180;
-      let a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+      const R = 6371e3; // Earth radius in meters
+      const dLat = (lat2-lat1) * Math.PI/180;
+      const dLon = (lon2-lon1) * Math.PI/180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
       return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
     }
 
-    function switchTab(tabId, el) { 
-      document.querySelectorAll('.admin-card > div[id^="tab"]').forEach(div => div.classList.add('hidden'));
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.getElementById(tabId).classList.remove('hidden'); el.classList.add('active');
+    // --- STUDENT & ADMIN UI EXTRA CORE FUNCTIONS ---
+    function switchTab(tabId, el) {
+      document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('tabNotice').classList.add('hidden');
+      document.getElementById('tabAtt').classList.add('hidden');
+      document.getElementById('tabManual').classList.add('hidden');
+      document.getElementById('tabChart').classList.add('hidden');
+      document.getElementById('tabLoc').classList.add('hidden');
+      document.getElementById('tabSec').classList.add('hidden');
+      document.getElementById(tabId).classList.remove('hidden');
+    }
+
+    function refreshStudentData() {
+      let savedId = localStorage.getItem("libStuId");
+      let savedMob = localStorage.getItem("libStuMob");
+      if(savedId && savedMob) {
+        document.getElementById("stuRefreshBtn").innerText = "Loading...";
+        callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
+          document.getElementById("stuRefreshBtn").innerText = "↻ Refresh";
+          if(res.success) {
+            localStorage.setItem("libStuData", JSON.stringify(res));
+            setupStudentDashboard(res);
+          }
+        });
+      }
+    }
+
+    function refreshAdminData() {
+      document.getElementById("adminRefreshBtn").innerText = "Loading...";
+      fetchDailyAttendance();
+      setTimeout(() => { document.getElementById("adminRefreshBtn").innerText = "↻ Refresh"; }, 1000);
     }
 
     function submitAdminNotice() {
-      let txt = document.getElementById("noticeMsg").value.trim();
-      if(!txt) return;
-      document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#0f131c;'>Saving...</span>";
-      callBackend("saveNotice", {txt: txt}, res => { document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>"; });
+      let text = document.getElementById("noticeMsg").value.trim();
+      let msg = document.getElementById("adminNoticeMsg");
+      if(!text) return;
+      msg.innerText = "Submitting...";
+      callBackend("submitNotice", {text: text}, res => {
+        if(res.success) {
+          msg.style.color = "green"; msg.innerText = "Notice Published Successfully!";
+          document.getElementById("noticeMsg").value = "";
+        } else { msg.style.color = "red"; msg.innerText = "Failed!"; }
+      });
     }
 
     function clearAdminNotice() {
-      if(!confirm("Are you sure you want to delete all active notices?")) return;
-      document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#c0392b;'>Clearing...</span>";
-      callBackend("clearAllNotices", {}, res => {
-        document.getElementById("adminNoticeMsg").innerHTML = "<span style='color:#27ae60;'>" + res.message + "</span>";
-        document.getElementById("noticeMsg").value = ""; 
+      let msg = document.getElementById("adminNoticeMsg");
+      msg.innerText = "Clearing...";
+      callBackend("clearNotice", {}, res => {
+        if(res.success) {
+          msg.style.color = "green"; msg.innerText = "Notice Cleared!";
+        } else { msg.style.color = "red"; msg.innerText = "Failed!"; }
       });
     }
 
     function fetchDailyAttendance() {
-      let dStr = document.getElementById("attDate").value; 
-      if(!dStr) return;
-      document.getElementById("attBody").innerHTML = "<tr><td colspan='5' style='text-align:center;'>Loading...</td></tr>";
-      callBackend("getDailyAttendance", {dStr: dStr}, list => {
-          let html = ""; 
-          list.forEach(r => { 
-            let badge = r.type === 'IN' ? "<span style='color:#27ae60; font-weight:bold;'>IN</span>" : "<span style='color:#c0392b; font-weight:bold;'>OUT</span>";
-            html += `<tr><td>${r.time}</td><td>${r.id}</td><td>${r.name}</td><td>${r.mobile}</td><td>${badge}</td></tr>`; 
+      let date = document.getElementById("attDate").value;
+      callBackend("getDailyAttendance", {date: date}, res => {
+        let tbody = document.getElementById("attBody");
+        tbody.innerHTML = "";
+        if(res && res.length > 0) {
+          res.forEach(row => {
+            tbody.innerHTML += `<tr><td>${row.time || ''}</td><td>${row.id || ''}</td><td>${row.name || ''}</td><td>${row.mobile || ''}</td><td>${row.type || ''}</td></tr>`;
           });
-          document.getElementById("attBody").innerHTML = html || "<tr><td colspan='5' style='text-align:center;'>No records found</td></tr>";
-      }, err => { document.getElementById("attBody").innerHTML = `<tr><td colspan='5' style='text-align:center; color:red;'>Error</td></tr>`; });
-    }
-
-    function fetchCalendar() {
-      let search = document.getElementById("chartSearch").value; let monthStr = document.getElementById("chartMonth").value; 
-      if(!search || !monthStr) { alert("Please enter ID/Mobile and select Month"); return; }
-      document.getElementById("calendarDiv").innerHTML = "<div style='grid-column: span 7; text-align:center;'>Loading Calendar...</div>";
-      document.getElementById("calStats").innerHTML = ""; document.getElementById("calDetails").innerHTML = "";
-      callBackend("getStudentCalendarData", {search: search, monthStr: monthStr}, res => { 
-          globalCalData = res; buildCalendar(monthStr); 
-      }, err => { document.getElementById("calendarDiv").innerHTML = `<div style='grid-column: span 7; text-align:center; color:red;'>Error</div>`; });
-    }
-
-    function buildCalendar(monthStr) {
-      let pts = monthStr.split("-"); let year = parseInt(pts[0]), month = parseInt(pts[1]) - 1;
-      let daysInMonth = new Date(year, month + 1, 0).getDate();
-      let calDiv = document.getElementById("calendarDiv"); calDiv.innerHTML = "";
-      let presentCount = 0;
-      for(let i=1; i<=daysInMonth; i++) {
-        let dStr = year + "-" + ("0"+(month+1)).slice(-2) + "-" + ("0"+i).slice(-2); 
-        let dayRecords = globalCalData.filter(r => r.date === dStr);
-        let statusClass = dayRecords.length > 0 ? "present" : "absent";
-        if(dayRecords.length > 0) presentCount++;
-        let box = document.createElement("div"); box.className = "day " + statusClass; box.innerText = i;
-        box.onclick = function() {
-          if(dayRecords.length > 0) {
-            let info = `Date: ${("0"+i).slice(-2)}/${("0"+(month+1)).slice(-2)}/${year}<br><br>`;
-            dayRecords.forEach(r => { let color = r.type === 'IN' ? 'green' : 'red'; info += `<span style="color:${color};">[${r.type}]</span> at ${r.time}<br>`; });
-            document.getElementById("calDetails").innerHTML = info;
-          } else document.getElementById("calDetails").innerHTML = `Absent on this day.`;
-        };
-        calDiv.appendChild(box);
-      }
-      let today = new Date(); let daysPassed = (today.getMonth() === month && today.getFullYear() === year) ? today.getDate() : daysInMonth;
-      let absentCount = daysPassed - presentCount; let percent = daysPassed > 0 ? Math.round((presentCount / daysPassed) * 100) : 0;
-      document.getElementById("calStats").innerHTML = `<span style='color:#27ae60'>Present: ${presentCount}</span> | <span style='color:#c0392b'>Absent: ${absentCount}</span> | <span style='color:#0f131c'>Percentage: ${percent}%</span>`;
-    }
-
-    // 🚀 ULTRA-ACCURATE ADMIN GEOFENCE LOCK
-    function setLibraryLocation() {
-      let msgBox = document.getElementById("locSaveMsg"); 
-      msgBox.innerHTML = "<span style='color:#0f131c;'>Connecting to Satellites... Please stand still (10s) 🛰️</span>";
-      
-      if(!navigator.geolocation) { msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Permission Denied!</span>"; return; }
-      
-      let bestAccuracy = 9999; let bestLat = 0, bestLng = 0; let attemptCount = 0;
-      
-      let geoWatchId = navigator.geolocation.watchPosition(
-          (pos) => { 
-              attemptCount++; 
-              // Agar accuracy (error in meters) purani wali se kam hai, toh naya data save karo
-              if (pos.coords.accuracy < bestAccuracy) { 
-                  bestAccuracy = pos.coords.accuracy; 
-                  bestLat = pos.coords.latitude; 
-                  bestLng = pos.coords.longitude; 
-              }
-              msgBox.innerHTML = `<span style='color:#3498db;'>Refining Signal: Accuracy ${Math.round(bestAccuracy)}m... (Attempt ${attemptCount}) ⏳</span>`;
-          }, 
-          (err) => { msgBox.innerHTML = "<span style='color:#c0392b;'>GPS Error! Try standing outside.</span>"; }, 
-          // 🚀 FIX: maximumAge: 0 forces phone to not use cached location
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-      );
-
-      // 8 second baad result process karenge
-      setTimeout(() => { 
-          navigator.geolocation.clearWatch(geoWatchId); 
-          
-          // Agar accuracy 30 meter se zyada kharab hai, toh save mat karo!
-          if (bestAccuracy > 30) {
-              msgBox.innerHTML = `<span style='color:#c0392b;'>Signal too weak (Error: ${Math.round(bestAccuracy)}m). Bahar khule aasmaan me try karein. ❌</span>`;
-              return;
-          }
-
-          if (bestLat !== 0 && bestLng !== 0) {
-              msgBox.innerHTML = `<span style='color:#0f131c;'>Saving Pin-Point Location (Accuracy: ${Math.round(bestAccuracy)}m)...</span>`;
-              callBackend("saveLibraryLocation", { lat: bestLat, lng: bestLng }, res => { 
-                  if(res.success) { msgBox.innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>"; } 
-                  else { msgBox.innerHTML = "<span style='color:#c0392b;'>Backend Error: " + res.message + " ❌</span>"; }
-              });
-          } else { 
-              msgBox.innerHTML = "<span style='color:#c0392b;'>Location lock failed! Check your GPS. ❌</span>"; 
-          }
-      }, 8000); 
-    }
-
-    function refreshStudentData() {
-      let btn = document.getElementById("stuRefreshBtn"); btn.innerText = "↻ Refreshing...";
-      let savedId = localStorage.getItem("libStuId"); let savedMob = localStorage.getItem("libStuMob");
-      if(!savedId || !savedMob) { btn.innerText = "↻ Refresh"; return; }
-      callBackend("checkStudentLoginAndStatus", {id: savedId, mob: savedMob}, res => {
-          if(res.success) { if(!res.active) { show('inactiveScreen'); } else { localStorage.setItem("libStuData", JSON.stringify(res)); setupStudentDashboard(res); setTimeout(() => { btn.innerText = "↻ Refresh"; }, 500); }
-          } else { logout(); }
-      }, err => { btn.innerText = "↻ Refresh"; });
-    }
-
-    function refreshAdminData() {
-      let btn = document.getElementById("adminRefreshBtn"); btn.innerText = "↻ Refreshing...";
-      if(!document.getElementById("tabAtt").classList.contains("hidden")) { fetchDailyAttendance(); } else if(!document.getElementById("tabChart").classList.contains("hidden")) { fetchCalendar(); }
-      setTimeout(() => { btn.innerText = "↻ Refresh"; }, 1500); 
+        } else {
+          tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No records found.</td></tr>";
+        }
+      });
     }
 
     function markAdminManualAttendance() {
       let val = document.getElementById("manualAttInput").value.trim();
-      if(!val) { alert("Please enter Student ID or Mobile Number!"); return; }
-      let msgBox = document.getElementById("manualAttMsg"); msgBox.innerHTML = "<span style='color:#0f131c;'>Verifying & Marking... ⏳</span>";
-      callBackend("adminMarkAttendance", {searchValue: val}, res => {
-        if(res.success) { msgBox.innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>"; document.getElementById("manualAttInput").value = "";
-          let dateInput = document.getElementById("attDate"); if(dateInput && dateInput.value === new Date().toISOString().split('T')[0]) { fetchDailyAttendance(); }
-        } else { msgBox.innerHTML = "<span style='color:#c0392b;'>" + res.message + " ❌</span>"; }
+      let msg = document.getElementById("manualAttMsg");
+      if(!val) return;
+      msg.innerText = "Marking...";
+      callBackend("markManualAttendance", {input: val}, res => {
+        if(res.success) {
+          msg.style.color = "green"; msg.innerText = res.message;
+          document.getElementById("manualAttInput").value = "";
+        } else { msg.style.color = "red"; msg.innerText = res.message; }
       });
     }
 
-    // 🚀 NEW: ADMIN CHANGE CREDENTIALS LOGIC
-    function adminChangeCred() {
-        let role = document.getElementById("targetRole").value;
-        let oldU = document.getElementById("targetOldUser").value.trim();
-        let newU = document.getElementById("targetNewUser").value.trim();
-        let newP = document.getElementById("targetNewPass").value.trim();
-        let msg = document.getElementById("adminCredMsg");
-
-        if(!oldU || !newU || !newP) { alert("Sari details bharein!"); return; }
-
-        msg.innerHTML = "<span style='color:#3498db;'>Updating... ⏳</span>";
-        
-        callBackend("adminChangeCredentials", {targetRole: role, targetUser: oldU, newUser: newU, newPass: newP}, res => {
-            if(res.success) {
-                msg.innerHTML = "<span style='color:#27ae60; font-size:15px;'>" + res.message + " ✅</span>";
-                document.getElementById("targetOldUser").value = "";
-                document.getElementById("targetNewUser").value = "";
-                document.getElementById("targetNewPass").value = "";
-            } else {
-                msg.innerHTML = "<span style='color:#c0392b;'>" + res.message + " ❌</span>";
-            }
-        });
+    function fetchCalendar() {
+      let search = document.getElementById("chartSearch").value.trim();
+      let month = document.getElementById("chartMonth").value;
+      if(!search || !month) return;
+      callBackend("getStudentCalendar", {search: search, month: month}, res => {
+        let calDiv = document.getElementById("calendarDiv");
+        let stats = document.getElementById("calStats");
+        calDiv.innerHTML = "";
+        if(res.success) {
+          stats.innerText = `Present: ${res.presentCount || 0} | Absent: ${res.absentCount || 0}`;
+          if(res.days) {
+            res.days.forEach(d => {
+              let cl = d.status === "Present" ? "present" : (d.status === "Absent" ? "absent" : "");
+              calDiv.innerHTML += `<div class="day ${cl}">${d.dayNum}</div>`;
+            });
+          }
+        } else { stats.innerText = "No data found!"; }
+      });
     }
 
+    function setLibraryLocation() {
+      let msg = document.getElementById("locSaveMsg");
+      msg.innerText = "Getting Current Location...";
+      navigator.geolocation.getCurrentPosition(pos => {
+        callBackend("saveLocation", {lat: pos.coords.latitude, lng: pos.coords.longitude}, res => {
+          if(res.success) { msg.style.color = "green"; msg.innerText = "Library location locked successfully!"; }
+          else { msg.style.color = "red"; msg.innerText = "Failed to save!"; }
+        });
+      }, err => { msg.style.color = "red"; msg.innerText = "GPS error!"; }, {enableHighAccuracy: true});
+    }
+
+    function saveAdminQRCode() {
+      let txt = document.getElementById("adminQrInput").value.trim();
+      let msg = document.getElementById("qrSaveMsg");
+      if(!txt) return;
+      msg.innerText = "Saving QR Text...";
+      callBackend("saveSecretQR", {qr: txt}, res => {
+        if(res.success) {
+          msg.style.color = "green"; msg.innerText = "Secret QR code locked!";
+          document.getElementById("adminQrInput").value = "";
+        } else { msg.style.color = "red"; msg.innerText = "Failed!"; }
+      });
+    }
+
+    function adminChangeCred() {
+      let role = document.getElementById("targetRole").value;
+      let oldU = document.getElementById("targetOldUser").value.trim();
+      let newU = document.getElementById("targetNewUser").value.trim();
+      let newP = document.getElementById("targetNewPass").value.trim();
+      let msg = document.getElementById("adminCredMsg");
+      if(!oldU || !newU || !newP) return;
+      msg.innerText = "Updating...";
+      callBackend("changeCredentials", {role: role, oldUser: oldU, newUser: newU, newPass: newP}, res => {
+        if(res.success) {
+          msg.style.color = "green"; msg.innerText = "Credentials updated!";
+          document.getElementById("targetOldUser").value = "";
+          document.getElementById("targetNewUser").value = "";
+          document.getElementById("targetNewPass").value = "";
+        } else { msg.style.color = "red"; msg.innerText = res.message; }
+      });
+    }
   </script>
 </body>
 </html>
