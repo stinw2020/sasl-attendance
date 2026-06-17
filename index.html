@@ -263,7 +263,7 @@
 
     <div id="tabLoc" class="hidden">
       <h3>Set Library Geofence</h3>
-      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 25 meters of this exact point to scan.</p> 
+      <p style="font-size:14px; color:#7f8c8d; line-height:1.5;">Stand at the library entrance and save GPS Location. Students must be within 50 meters of this exact point to scan.</p> 
       <button class="btn-green" style="padding:16px;" onclick="setLibraryLocation()">Lock Current Location</button>
       <div id="locSaveMsg" style="font-weight:bold; margin-top:15px; font-size:16px; text-align:center;"></div>
       <hr>
@@ -297,7 +297,7 @@
     // 👇 YAHAN APNA GOOGLE APP SCRIPT WALA NAYA URL DALEIN 👇
     const API_URL = "https://script.google.com/macros/s/AKfycbx4kbfaVHrqFsSO5v41RNcZPP0arAbM_oLxW0t5HiggjODp8XCjjpPkPGyHNK_FjTNy/exec";
 
-    const ALLOWED_RADIUS = 25;
+    const ALLOWED_RADIUS = 50;
     let studentData = null;
     let libLat = 0, libLng = 0;
     let currentSecretQR = "";
@@ -646,9 +646,9 @@
 
         let dist = getDistance(pos.coords.latitude, pos.coords.longitude, libLat, libLng);
         
-        if(dist <= 25) {
+        if(dist <= 50) {
             msgBox.innerHTML = "<span style='color:#0f131c;'>Location Verified! Marking Attendance...</span>";
-            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <25m (Acc: "+Math.round(accuracy)+"m)"}, res => {
+            callBackend("markSmartAttendance", {id: studentData.id, name: studentData.name, mob: studentData.mobile, remark: "Verified <50m (Acc: "+Math.round(accuracy)+"m)"}, res => {
               if(res.success) document.getElementById("attMsg").innerHTML = "<span style='color:#27ae60; font-size:16px;'>" + res.message + " ✅</span>";
               else document.getElementById("attMsg").innerHTML = "<span style='color:#c0392b;'>Error: " + res.message + "</span>";
             });
@@ -657,7 +657,7 @@
             setTimeout(() => { verifyLocationAndMark(decodedText, retryCount + 1); }, 1500);
         } 
         else { 
-            msgBox.innerHTML = "<span style='color:#c0392b;'>Aap library se " + Math.round(dist) + " meter door hain! (Allowed: 25m). Bahar aakar dubara scan karein.</span>"; 
+            msgBox.innerHTML = "<span style='color:#c0392b;'>Aap library se " + Math.round(dist) + " meter door hain! (Allowed: 50m). Bahar aakar dubara scan karein.</span>"; 
         }
       }, err => {
         if (retryCount < 4) { 
