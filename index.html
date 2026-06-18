@@ -620,7 +620,7 @@
       history.pushState({ scannerOpen: true }, "", "#scanner");
       if(!html5QrCode) html5QrCode = new Html5Qrcode("qr-scanner-content");
       html5QrCode.start(
-          { facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
+          { facingMode: "environment" }, { fps: 10, qrbox: 200 }, 
           (decodedText) => { resetScannerUI(true); verifyLocationAndMark(decodedText); }
       ).catch(err => { alert("Camera Permission Denied!"); resetScannerUI(true); });
     }
