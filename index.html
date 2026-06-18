@@ -175,6 +175,7 @@
     <img id="dPhoto" src="https://via.placeholder.com/100" class="photo">
     <h2 id="dName" style="text-align:center; margin:5px 0;"></h2>
     <p id="dId" style="text-align:center; color:#7f8c8d; margin:0; font-weight:bold; font-size:15px;"></p>
+    
     <p id="dSeat" style="text-align:center; color:#0f131c; margin:0; font-size:14px; font-weight:bold;"></p>
     
     <div style="background:#f8f9fa; border-radius:8px; padding:15px; margin-top:20px;">
@@ -562,12 +563,16 @@
       });
     }
 
+    // 🔥 MODIFIED: Render Seat logic here 🔥
     function setupStudentDashboard(res) {
       show('studentDashboard'); 
       studentData = res;
       document.getElementById("dName").innerText = res.name;
       document.getElementById("dId").innerText = res.id;
-      document.getElementById("dSeat").innerText = "Seat No: " + (res.seatNumber || res.seat || "N/A");
+      
+      // Update: Seat text
+      document.getElementById("dSeat").innerText = "Seat No: " + (res.seat || res.seatNumber || "N/A");
+      
       document.getElementById("dJoin").innerText = res.joinDate;
       document.getElementById("dDue").innerText = res.dueDate;
       
@@ -607,68 +612,26 @@
       }
     }
     
+    // ORIGINAL SCANNER FUNCTION MAINTAINED!
     function startScanner() {
       let readerDiv = document.getElementById("reader");
       readerDiv.style.display = "block"; 
-      // 🔥 FIX 1: Video container ko explicit CSS constraints dena padta hai iOS Webkit ke liye
-      readerDiv.innerHTML = '<div id="qr-scanner-content" style="width: 100vw; height: 100vh; display:flex; justify-content:center; align-items:center;"></div>';
-      
+      readerDiv.innerHTML = '<div id="qr-scanner-content" style="width: 100%; height: 100%;"></div>';
       history.pushState({ scannerOpen: true }, "", "#scanner");
-      
       if(!html5QrCode) html5QrCode = new Html5Qrcode("qr-scanner-content");
-
-      // 🔥 FIX 2: iOS PWA/Safari Camera Constraints Fix
-      const cameraConfig = {
-          facingMode: { ideal: "environment" }
-      };
-
-      const qrConfig = {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0 // 🔥 FIX 3: Helps iOS camera keep shape proportion without squishing
-      };
-
       html5QrCode.start(
-          cameraConfig, 
-          qrConfig, 
-          (decodedText) => { 
-              resetScannerUI(true); 
-              verifyLocationAndMark(decodedText); 
-          }
-      ).catch(err => { 
-          console.error("Camera Init Error:", err);
-          alert("Camera shuru karne mein problem aayi! Kripya Settings -> Safari/Browser me Camera permission check karein."); 
-          resetScannerUI(true); 
-      });
+          { facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
+          (decodedText) => { resetScannerUI(true); verifyLocationAndMark(decodedText); }
+      ).catch(err => { alert("Camera Permission Denied!"); resetScannerUI(true); });
     }
 
     function resetScannerUI(goBack = false) {
       let readerDiv = document.getElementById("reader");
-      
+      readerDiv.style.display = "none";
       if(html5QrCode) {
-          // 🔥 FIX 4: iOS me kabhi kabhi stream stop promise fas jata hai
-          try {
-              html5QrCode.stop().then(() => { 
-                  html5QrCode.clear(); 
-                  readerDiv.innerHTML = ""; 
-                  html5QrCode = null; 
-                  readerDiv.style.display = "none";
-              }).catch(err => { 
-                  console.warn("Scanner stop error:", err);
-                  readerDiv.innerHTML = ""; 
-                  html5QrCode = null; 
-                  readerDiv.style.display = "none";
-              });
-          } catch(e) {
-              readerDiv.innerHTML = ""; 
-              html5QrCode = null; 
-              readerDiv.style.display = "none";
-          }
-      } else { 
-          readerDiv.innerHTML = ""; 
-          readerDiv.style.display = "none";
-      }
-
+          html5QrCode.stop().then(() => { html5QrCode.clear(); readerDiv.innerHTML = ""; html5QrCode = null; 
+          }).catch(err => { readerDiv.innerHTML = ""; html5QrCode = null; });
+      } else { readerDiv.innerHTML = ""; }
       if (goBack && location.hash === "#scanner") { history.back(); }
     }
 
