@@ -205,7 +205,7 @@
     <div style="text-align:center; padding: 12px; background: #e3f2fd; border-radius: 8px; margin-bottom: 15px; border: 1px solid #bce0ee;">
        <p style="margin:0; font-size: 14px; font-weight: bold; color: #2980b9;">Feedback & Queries call - <a href="tel:8188988566" style="text-decoration:none; color:#2980b9;">8188988566</a></p>
     </div>
-    
+
     <h3 style="margin-bottom:10px; font-size:18px;">Notice Board</h3>
     <div id="noticeList" style="background:#fff3cd; padding:15px; border-radius:8px; font-size:14px; color:#856404; line-height:1.6;"></div>
   </div>
@@ -797,7 +797,7 @@
       setTimeout(() => { 
           navigator.geolocation.clearWatch(geoWatchId); 
           
-          // Agar accuracy 30 meter se zyada kharab hai, toh save mat karo!
+          // Agar accuracy 30 meter se kharab hai, toh save mat karo!
           if (bestAccuracy > 30) {
               msgBox.innerHTML = `<span style='color:#c0392b;'>Signal too weak (Error: ${Math.round(bestAccuracy)}m). Bahar khule aasmaan me try karein. ❌</span>`;
               return;
